@@ -3,9 +3,10 @@
   "type": "commonjs",
   "version": "1.0.0",
   "main": "server.js",
+  "engines": {"node": "20.19.5"},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon server.js"
+    "start": "src/server.js"
   },
   "keywords": [],
   "author": "",

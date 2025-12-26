@@ -18,11 +18,7 @@ const chatSchema = new mongoose.Schema(
     },
     lastActivity: { type: Date, default: Date.now },
     lastMessage: { type: String }, // 🔥 AJOUT : Pour l'aperçu
-    expiresAt: {
-      type: Date,
-      default: () => new Date(Date.now() + 24 * 60 * 60 * 1000),
-      index: { expireAfterSeconds: 0 },
-    },
+
     isActive: { type: Boolean, default: true },
   },
   {

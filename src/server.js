@@ -95,10 +95,8 @@ if (process.env.NODE_ENV === "production") {
 
 // Routes API
 app.use("/api/auth", authRoutes);
-// app.use("/api/nearby-users", protect, nearbyUsersRoutes);
 app.use("/api/signals", protect, signalRoutes);
 app.use("/api/chats", protect, chatRoutes);
-console.log("✅ Chargement route users...")
 app.use("/api/users", protect, userRoutes);
 app.use("/api/uploads", protect,uploadRoutes);
 
@@ -183,7 +181,7 @@ app.use((error, req, res, next) => {
 
 // Gestion de la fermeture gracieuse
 process.on("SIGINT", async () => {
-  console.log("Received SIGINT. Closing server gracefully...");
+  // console.log("Received SIGINT. Closing server gracefully...");
   server.close(() => {
     mongoose.connection.close(false, () => {
       console.log("MongoDB connection closed.");
@@ -193,7 +191,7 @@ process.on("SIGINT", async () => {
 });
 
 process.on("SIGTERM", async () => {
-  console.log("Received SIGTERM. Closing server gracefully...");
+  // console.log("Received SIGTERM. Closing server gracefully...");
   server.close(() => {
     mongoose.connection.close(false, () => {
       console.log("MongoDB connection closed.");
@@ -204,25 +202,25 @@ process.on("SIGTERM", async () => {
 
 // Gestion des promesses non attrapées
 process.on("unhandledRejection", (err) => {
-  console.log("Unhandled Rejection:", err);
+  // console.log("Unhandled Rejection:", err);
   server.close(() => {
     process.exit(1);
   });
 });
 
 process.on("uncaughtException", (err) => {
-  console.log("Uncaught Exception:", err);
+  // console.log("Uncaught Exception:", err);
   server.close(() => {
     process.exit(1);
   });
 });
 // ✅ Configuration Socket.io SIMPLIFIÉE (pour debug)
 io.on("connection", (socket) => {
-  console.log('✅ Nouvelle connexion Socket.io:', socket.id);
+  // console.log('✅ Nouvelle connexion Socket.io:', socket.id);
   
   // Authentification
   socket.on("user_authenticated", (userId) => {
-    console.log(`👤 Utilisateur authentifié: ${userId}`);
+    // console.log(`👤 Utilisateur authentifié: ${userId}`);
     socket.userId = userId;
     socket.join(userId);
     
@@ -283,4 +281,4 @@ const startServer = async () => {
 // Démarrage de l'application
 startServer();
 
-module.exports = { app, server, io };
+module.exports = { app, server, io }

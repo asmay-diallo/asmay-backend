@@ -35,7 +35,7 @@ const register = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: "Cet utilisateur existe déjà !",
+        message: "Cet compte ASMAY existe déjà ! Veuillez ajouter un autre !",
       });
     }
 

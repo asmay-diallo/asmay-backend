@@ -313,7 +313,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
     });
   }
 
-  console.log(`✅ [getNearbyUsers] ${nearbyUsers.length} utilisateurs retournés`);
+  // console.log(`✅ [getNearbyUsers] ${nearbyUsers.length} utilisateurs retournés`);
 
   res.status(200).json({
     success: true,
