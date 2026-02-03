@@ -23,7 +23,7 @@ const signalSchema = new mongoose.Schema({
     required: true,
     ref: 'UserSession'
   },
-    message: {
+  message: {
     type: String,
     maxlength: 500
   },
@@ -33,24 +33,24 @@ const signalSchema = new mongoose.Schema({
     default: 'pending'
   },
   commonInterests: [String],
-  expiresAt: {
-    type: Date,
-    default: () => new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
-    index: { expireAfterSeconds: 0 }
-  },
-  chatId: {
+    chatId: {
     type: String,
     required: true, // ← Maintenant requis dès la création
     unique: true
   },
-
   viewed: {
     type: Boolean,
     default: false
   },
   respondedAt: {
     type: Date
-  }
+  },
+  expiresAt: {
+    type: Date,
+    default: () => new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
+    index: { expireAfterSeconds: 0 }
+  },
+
 }, {
   timestamps: true
 });

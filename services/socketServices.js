@@ -25,7 +25,7 @@ class SocketService {
     socket.leave(`chat_${chatId}`);
     console.log(`❌ User left chat: ${chatId}`);
   }
-
+// Connexion de Socket
   handleConnection(socket, io) {
     console.log("🔌 Nouvelle connexion Socket.io:", socket.id);
 
@@ -37,198 +37,8 @@ class SocketService {
         `✅ Utilisateur ${userId} authentifié sur socket ${socket.id}`
       );
     });
-
-    // 🔥 AJOUT : Écouter l'envoi de signal via socket
-    //     socket.on("send_signal", async (data) => {
-    //       try {
-    //         console.log("📨 Événement send_signal reçu:", data);
-    //
-    //         const fromUserId = this.socketToUser.get(socket.id);
-    //
-    //         if (!fromUserId) {
-    //           socket.emit("signal_error", {
-    //             message: "Utilisateur non authentifié",
-    //           });
-    //           return;
-    //         }
-    //
-    //         const { targetUserId, message } = data;
-    //
-    //         console.log(`🎯 Signal de ${fromUserId} vers ${targetUserId}`);
-    //         // 🔥 CORRECTION : Récupérer les vraies infos utilisateur depuis la DB
-    //         const fromUser = await User.findById(fromUserId).select(
-    //           "username profilePicture interests"
-    //         );
-    //         if (!fromUser) {
-    //           socket.emit("signal_error", {
-    //             message: "Utilisateur expéditeur non trouvé",
-    //           });
-    //           return;
-    //         }
-    //
-    //         const signal = new Signal({
-    //           fromUserId: fromUserId,
-    //           toUserId: targetUserId,
-    //           message: message,
-    //           commonInterests: commonInterests,
-    //           chatId:chatId,
-    //           fromUserSessionId: socket.id,
-    //           toUserSessionId: `session_${toUser}`,
-    //           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    //         });
-    //         await signal.save();
-    //         await signal.populate("fromUser", "username profilePicture interests");
-    //
-    //         const signalData = {
-    //           _id: "temp-" + Date.now(),
-    //           fromUser: {
-    //             _id: signal.fromUserId._id,
-    //             username: signal.fromUserId.username, // À récupérer de la DB
-    //             profilePicture: signal.fromUserId.profilePicture,
-    //             interests: signal.fromUserId.interests || [],
-    //           },
-    //           toUser: signal.toUserId,
-    //           message: signal.message,
-    //            chatId:signal.chatId,
-    //           status: "pending",
-    //           createdAt: new Date().toISOString(),
-    //           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    //           commonInterests: [],
-    //         };
-    //
-    //         // ENVOYER LE SIGNAL AU DESTINATAIRE
-    //         const signalSent = this.sendSignalToUser(io, targetUserId, signalData);
-    //
-    //         // CONFIRMATION
-    //         socket.emit("signal_sent", {
-    //           success: true,
-    //           targetUserId,
-    //           delivered: signalSent,
-    //           timestamp: new Date(),
-    //         });
-    //       } catch (error) {
-    //         console.error("❌ Erreur envoi signal:", error);
-    //         socket.emit("signal_error", {
-    //           message: "Erreur lors de l'envoi du signal",
-    //         });
-    //       }
-    //     });
-
-//     socket.on("send_signal", async (data) => {
-//       try {
-//         console.log("📨 Événement send_signal reçu:", data);
-// 
-//         const fromUserId = this.socketToUser.get(socket.id);
-// 
-//         if (!fromUserId) {
-//           socket.emit("signal_error", {
-//             message: "Utilisateur non authentifié",
-//           });
-//           return;
-//         }
-// 
-//         const { targetUserId, message } = data;
-// 
-//         console.log(`🎯 Signal de ${fromUserId} vers ${targetUserId}`);
-// 
-//         // 🔥 CORRECTION : Récupérer les vraies infos utilisateur
-//         const fromUser = await User.findById(fromUserId).select(
-//           "username profilePicture interests"
-//         );
-//         if (!fromUser) {
-//           socket.emit("signal_error", {
-//             message: "Utilisateur expéditeur non trouvé",
-//           });
-//           return;
-//         }
-// 
-//         // 🔥 CORRECTION : Récupérer l'utilisateur cible
-//         const toUser = await User.findById(targetUserId).select("interests");
-//         if (!toUser) {
-//           socket.emit("signal_error", {
-//             message: "Utilisateur cible non trouvé",
-//           });
-//           return;
-//         }
-// 
-//         // 🔥 CORRECTION : Calculer les intérêts communs (c'était manquant !)
-//         const commonInterests =
-//           fromUser.interests?.filter((interest) =>
-//             toUser.interests?.includes(interest)
-//           ) || [];
-// 
-//         console.log("🎯 Intérêts communs calculés:", commonInterests);
-// 
-//         // 🔥 CORRECTION : Générer le chatId
-//         const chatId = this.generateChatId();
-// 
-//         // 🔥 CORRECTION : Récupérer la session de l'utilisateur cible
-//         const targetSocketId = this.userConnections.get(
-//           targetUserId.toString()
-//         );
-//         const toUserSessionId = targetSocketId
-//           ? targetSocketId
-//           : `session_${targetUserId}`;
-// 
-//         // 🔥 CORRECTION : Créer et sauvegarder le signal AVEC chatId
-//         const signal = new Signal({
-//           fromUserId: fromUserId,
-//           toUserId: targetUserId,
-//           message: message,
-//           commonInterests: commonInterests, // ← MAINTENANT commonInterests EST DÉFINI
-//           chatId: chatId,
-//           fromUserSessionId: socket.id,
-//           toUserSessionId: toUserSessionId,
-//           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-//         });
-// 
-//         await signal.save();
-// 
-//         // 🔥 CORRECTION : Populer les données utilisateur
-//         await signal.populate(
-//           "fromUserId",
-//           "username profilePicture interests"
-//         );
-// 
-//         // 🔥 CORRECTION : Préparer les données du signal
-//         const signalData = {
-//           _id: signal._id,
-//           fromUser: {
-//             _id: signal.fromUserId._id,
-//             username: signal.fromUserId.username,
-//             profilePicture: signal.fromUserId.profilePicture,
-//             interests: signal.fromUserId.interests || [],
-//           },
-//           toUser: signal.toUserId,
-//           message: signal.message,
-//           chatId: signal.chatId,
-//           status: "pending",
-//           commonInterests: signal.commonInterests,
-//           createdAt: signal.createdAt,
-//           expiresAt: signal.expiresAt,
-//         };
-// 
-//         console.log(`✅ Signal créé avec chatId: ${signal.chatId}`);
-// 
-//         // ENVOYER LE SIGNAL AU DESTINATAIRE
-//         const signalSent = this.sendSignalToUser(io, targetUserId, signalData);
-// 
-//         // CONFIRMATION À L'EXPÉDITEUR
-//         socket.emit("signal_sent", {
-//           success: true,
-//           targetUserId,
-//           chatId: signal.chatId,
-//           delivered: signalSent,
-//           timestamp: new Date(),
-//         });
-//       } catch (error) {
-//         console.error("❌ Erreur envoi signal:", error);
-//         socket.emit("signal_error", {
-//           message: "Erreur lors de l'envoi du signal: " + error.message,
-//         });
-//       }
-//     });
-     socket.on("send_signal", async (data) => {
+    // Envoi de signal 
+    socket.on("send_signal", async (data) => {
   try {
     console.log("📨 Événement send_signal reçu via socket");
     
@@ -243,7 +53,7 @@ class SocketService {
     
     const { targetUserId } = data;
     
-    // 🔥 CORRECTION IMPORTANTE : Utiliser targetUserId pour trouver la session
+    //  Utiliser targetUserId pour trouver la session
     const targetSession = await UserSession.findOne({
       userId: targetUserId,
       isActive: true
@@ -261,7 +71,7 @@ class SocketService {
     console.log(`🎯 Tentative d'envoi via socket de ${fromUserId} à ${targetUserId}`);
     console.log(`📱 Session cible trouvée: ${toSessionId}`);
     
-    // 🔥 UTILISER LE SERVICE CENTRAL POUR LA VÉRIFICATION
+    //  UTILISER LE SERVICE CENTRAL POUR LA VÉRIFICATION
     const { signal, signalData } = await this.sendSignal(
       fromUserId,
       toSessionId,
@@ -387,6 +197,64 @@ class SocketService {
         });
       }
     });
+  
+    socket.on('send_voice_message', async (data) => {
+  try {
+    const { chatId, tempId, audioUrl, duration } = data;
+    
+    const senderId = this.socketToUser.get(socket.id);
+    
+    if (!senderId) {
+      console.error('❌ User ID non défini dans socket');
+      socket.emit('voice_message_error', {
+        tempId,
+        error: 'Utilisateur non authentifié'
+      });
+      return;
+    }
+    
+    console.log(`🎤 [SOCKET] Message vocal reçu (NON TRAITÉ):`, { 
+      chatId, 
+      senderId,
+      tempId 
+    });
+    
+    // ❌ NE PAS TRAITER ICI - Laisser le REST API gérer
+    
+    // ✅ Seulement confirmer la réception
+    socket.emit('voice_message_received', {
+      tempId,
+      status: 'pending_api',
+      timestamp: new Date()
+    });
+    
+    console.log(`📤 Message transféré à l'API REST pour traitement`);
+    
+  } catch (error) {
+    console.error('❌ Erreur socket send_voice_message:', error);
+    socket.emit('voice_message_error', {
+      tempId: data?.tempId || 'unknown',
+      error: error.message
+    });
+  }
+});
+
+// Confirmation quand le message est enregistré en base de données
+    socket.on('voice_message_stored', (data) => {
+  const { tempId, messageId, chatId } = data;
+  
+  // Informer l'expéditeur que son message est définitivement stocké
+  socket.emit('voice_message_confirmed', {
+    oldTempId: tempId,
+    newMessageId: messageId
+  });
+  
+  // Informer les autres participants
+  socket.to(chatId).emit('voice_message_updated', {
+    oldTempId: tempId,
+    newMessageId: messageId
+  });
+    });
     // 📍 Mise à jour de la position
     socket.on("update_position", (data) => {
       const userId = this.socketToUser.get(socket.id);
@@ -405,75 +273,7 @@ class SocketService {
       });
     });
 
-    // Envoyer un message
-    socket.on("send_message", async (data) => {
-      try {
-        console.log("💬 [SOCKET] Message reçu:", data);
 
-        const { chatId, content, tempId } = data;
-        const senderId = this.socketToUser.get(socket.id);
-
-        if (!senderId) {
-          console.log("❌ [SOCKET] Utilisateur non authentifié");
-          socket.emit("message_error", { tempId, error: "Non authentifié" });
-          return;
-        }
-
-        const chat = await Chat.findOne({
-          _id: chatId,
-          isActive: true,
-          $or: [{ participant1: senderId }, { participant2: senderId }],
-        });
-
-        if (!chat) {
-          console.log("❌ [SOCKET] Chat non trouvé ou accès refusé");
-          socket.emit("message_error", { tempId, error: "Chat non trouvé" });
-          return;
-        }
-
-        const message = await Message.create({
-          chatId: chatId,
-          sender: senderId,
-          content: content,
-        });
-
-        await message.populate("sender", "username profilePicture");
-        console.log("✅ [SOCKET] Message sauvegardé:", message._id);
-
-        chat.lastActivity = new Date();
-        chat.lastMessage = content;
-        await chat.save();
-        console.log("✅ [SOCKET] Chat mis à jour");
-
-        const messageData = {
-          _id: message._id,
-          sender: {
-            _id: message.sender._id,
-            username: message.sender.username,
-            profilePicture: message.sender.profilePicture,
-          },
-          content: message.content,
-          chat: chatId,
-          createdAt: message.createdAt,
-        };
-
-        console.log("📡 [SOCKET] Émission new_message à chat_" + chatId);
-        io.to(`chat_${chatId}`).emit("new_message", messageData);
-
-        socket.emit("message_sent", {
-          messageId: message._id,
-          tempId: tempId,
-        });
-
-        console.log("🎉 [SOCKET] Message traité avec succès");
-      } catch (error) {
-        console.error("❌ [SOCKET] Erreur traitement message:", error);
-        socket.emit("message_error", {
-          tempId: data.tempId,
-          error: error.message,
-        });
-      }
-    });
 
     socket.on("ping", () => {
       socket.emit("pong", { timestamp: Date.now() });
@@ -488,6 +288,7 @@ class SocketService {
       console.error("❌ Erreur Socket.io:", error);
     });
   }
+
    async canSendSignal(fromUserId, toUserId) {
     console.log("🔍 Vérification canSendSignal...");
     console.log("  De:", fromUserId, "à:", toUserId);
@@ -580,6 +381,7 @@ class SocketService {
       fromUserSessionId: fromSession.sessionId,
       toUserSessionId: toSessionId,
       commonInterests: commonInterests.slice(0, 3),
+      message:`Salut ${targetUser.username.toUpperCase()} 👋 ! Je suis ${currentUser.username.toUpperCase()}, j'aimerais vous faire connaitre si pouvez accepter mon signal ?`,
       chatId: chatId,
       status: "pending",
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -596,7 +398,7 @@ class SocketService {
       },
       toUser: targetUser._id,
       chatId: signal.chatId,
-       message: signal.message,
+      message: signal.message,
       commonInterests: commonInterests.slice(0, 3),
       status: "pending",
       createdAt: signal.createdAt,

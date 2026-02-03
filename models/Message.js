@@ -29,7 +29,18 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    content: { type: String, required: true, maxlength: 500 }, // Limite de caractères
+     audioUrl: {
+    type: String,
+  },
+  duration: {
+    type: Number, // Durée en secondes
+  },
+  type: {
+    type: String,
+    enum: ['text', 'audio', 'image'], // Différents types de messages
+    default: 'text',
+  },
+    content: { type: String, maxlength: 500 }, // Limite de caractères
     read: { type: Boolean, default: false },
   },
   {

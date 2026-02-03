@@ -39,7 +39,7 @@ const protect = async (req, res, next) => {
         // console.error('❌ [PROTECT] Erreur vérification token:', error.message);
         return res.status(401).json({
           success: false,
-          message: 'Token invalide'
+          message: 'Verification a échouée, veuillez réessayer plus tard !'
         });
       }
     } else {
@@ -55,7 +55,7 @@ const protect = async (req, res, next) => {
     console.error('💥 [PROTECT] Erreur inattendue:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur serveur'
+      message: 'Un problème est survenu !'
     });
   }
 };

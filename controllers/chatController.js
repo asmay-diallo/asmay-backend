@@ -2,6 +2,8 @@
 const Chat = require("../models/Chat");
 const Message = require("../models/Message");
 const User = require("../models/User");
+const asyncHandler = require("../middleware/asyncHandler");
+
 
 // @desc    Récupérer les chats actifs d'un utilisateur
 // @route   GET /api/chats
@@ -179,4 +181,132 @@ const getChatMessages = async (req, res) => {
   }
 };
 
-module.exports = { getUserChats, sendMessage, getChatMessages };
+const sendVoiceMessage = asyncHandler(async (req, res) => {
+  try {
+    console.log('\n=== 🎤 DÉBUT sendVoiceMessage ===');
+    console.log('📥 Données reçues:');
+    console.log('- Chat ID:', req.params.chatId);
+    console.log('- User ID:', req.user.id);
+    console.log('- Fichier:', req.file?.filename);
+    console.log('- Durée:', req.body.duration);
+
+    // 1. Vérifier le fichier
+    if (!req.file) {
+      console.log('❌ ERREUR: Aucun fichier reçu');
+      return res.status(400).json({
+        success: false,
+        message: "Aucun fichier audio reçu",
+      });
+    }
+
+    // 2. Chercher le chat avec la bonne méthode
+    console.log('\n🔍 Recherche du chat...');
+    const chat = await Chat.findOne({
+      _id: req.params.chatId,
+      isActive: true,
+      $or: [{ participant1: req.user.id }, { participant2: req.user.id }],
+    });
+
+    if (!chat) {
+      console.log('❌ ERREUR: Chat non trouvé ou accès non autorisé');
+      return res.status(404).json({
+        success: false,
+        message: "Chat non trouvé ou accès refusé",
+      });
+    }
+
+    console.log('✅ Chat trouvé et utilisateur autorisé');
+
+    // 3. URLs du fichier
+    const audioUrl = `/uploads/voice_messages/${req.file.filename}`;
+    const audioFullUrl = `${req.protocol}://${req.get("host")}${audioUrl}`;
+    console.log('📁 URLs:', { audioUrl, audioFullUrl });
+
+    // 4. Créer le message AVEC LE BON CHAMP
+    console.log('\n💾 Création du message...');
+    const messageData = {
+      chatId: req.params.chatId,  // IMPORTANT: chatId pas chat
+      sender: req.user.id,
+      content: '', // Vide pour les messages vocaux
+      audioUrl: audioUrl,
+      duration: parseInt(req.body.duration) || 0,
+      type: 'audio',
+      tempId: req.body.tempId || null,
+    };
+
+    console.log('📝 Données message:', messageData);
+
+    let message;
+    try {
+      message = await Message.create(messageData);
+      console.log('✅ Message créé avec succès! ID:', message._id);
+    } catch (createError) {
+      console.error('❌ ERREUR création message:', createError.message);
+      if (createError.name === 'ValidationError') {
+        console.error('❌ Erreurs détaillées:', createError.errors);
+      }
+      throw createError;
+    }
+
+    // 5. Mettre à jour le chat
+    console.log('\n🔄 Mise à jour du chat...');
+    chat.lastActivity = new Date();
+    chat.lastMessage = "🎤 Message vocal";
+    await chat.save();
+    console.log('✅ Chat mis à jour');
+
+    // 6. Populer le message
+    console.log('\n👤 Population du sender...');
+    await message.populate('sender', 'username _id profilePicture');
+    console.log('✅ Sender peuplé:', message.sender.username);
+
+    // 7. Formater la réponse
+    const responseData = {
+      _id: message._id.toString(),
+      sender: {
+        _id: message.sender._id.toString(),
+        username: message.sender.username,
+        profilePicture: message.sender.profilePicture
+      },
+      audioUrl: audioUrl,
+      audioFullUrl: audioFullUrl,
+      duration: message.duration,
+      chat: req.params.chatId,
+      type: 'audio',
+      createdAt: message.createdAt,
+      tempId: req.body.tempId
+    };
+
+    // 8. Émettre via socket
+    const io = req.app.get('io');
+    if (io) {
+      console.log('\n📡 Émission socket...');
+      io.to(`chat_${req.params.chatId}`).emit('new_voice_message', responseData);
+      console.log('✅ Socket émis');
+    }
+
+    // 9. Réponse HTTP
+    console.log('\n🎉 Envoi réponse HTTP 201...');
+    res.status(201).json({
+      success: true,
+      message: "Message vocal envoyé",
+      data: responseData,
+    });
+
+    console.log('\n=== ✅ FIN sendVoiceMessage avec succès ===\n');
+
+  } catch (error) {
+    console.error('\n❌❌❌ ERREUR GLOBALE sendVoiceMessage ❌❌❌');
+    console.error('Message:', error.message);
+    console.error('Stack:', error.stack);
+    
+    res.status(500).json({
+      success: false,
+      message: "Erreur serveur: " + error.message,
+    });
+  }
+});
+
+
+
+module.exports = { getUserChats, sendMessage, getChatMessages ,sendVoiceMessage};

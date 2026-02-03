@@ -1,4 +1,6 @@
 
+const mongoose = require('mongoose');
+
 const User = require("../models/User");
 const UserSession = require("../models/UserSession");
 const geohash = require("ngeohash");
@@ -35,7 +37,7 @@ const register = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: "Cet compte ASMAY existe déjà ! Veuillez ajouter un autre !",
+        message: "Cet compte ASMAY existe déjà ! Veuillez ajouter un autre compte !",
       });
     }
 
@@ -50,11 +52,12 @@ const register = async (req, res) => {
 
     // Créer la session si la localisation est fournie
     if (latitude && longitude) {
+    const currentGeohash = geohash.encode(latitude,longitude,process.env.GEOHASH_PRECISION)
       try {
         await UserSession.create({
           userId: user._id,
           sessionId: `session_${user._id}_${Date.now()}`,
-          lastKnownGeohash: geohash.encode(latitude, longitude, 7),
+          lastKnownGeohash: currentGeohash,
           lat: parseFloat(latitude),
           lon: parseFloat(longitude),
           isActive: true,
@@ -71,7 +74,7 @@ const register = async (req, res) => {
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET || "fallback-secret",
-      { expiresIn: "30d" }
+      { expiresIn: "75d" }
     );
 
     // Réponse réussie
@@ -95,7 +98,7 @@ const register = async (req, res) => {
       const messages = Object.values(error.errors).map((val) => val.message);
       return res.status(400).json({
         success: false,
-        message: "Vos données sont invalides !",
+        message: "Vos données sont invalides ! Veuillez vérifier !",
         errors: messages,
       });
     }
@@ -116,7 +119,7 @@ const register = async (req, res) => {
 
 // @desc    Login user
 // @route   POST /api/auth/login
-// @access  Publicconst
+// @access  Public
 login = async (req, res) => {
   try {
     const { email, password, latitude, longitude } = req.body;
@@ -155,10 +158,13 @@ login = async (req, res) => {
     // Mettre à jour/créer la session
     try {
       if (latitude && longitude) {
+
+      const currentGeohash = geohash.encode(latitude,longitude,process.env.GEOHASH_PRECISION)
+
         const sessionData = {
           userId: user._id,
           sessionId: `session_${user._id}_${Date.now()}`,
-          lastKnownGeohash: geohash.encode(latitude, longitude, 7),
+          lastKnownGeohash: currentGeohash,
           lat: parseFloat(latitude),
           lon: parseFloat(longitude),
           isActive: true,
@@ -186,7 +192,7 @@ login = async (req, res) => {
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET || "fallback-secret",
-      { expiresIn: "30d" }
+      { expiresIn: "75d" }
     );
 
     console.log("🎉 Login complet pour:", user.username);

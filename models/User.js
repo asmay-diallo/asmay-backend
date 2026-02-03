@@ -1,5 +1,3 @@
-
-
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
@@ -29,7 +27,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: [true, "Le mot de passe est requis"],
-      minlength: [6, "Le mot de passe doit contenir au moins 6 caractères"],
+      minlength: [9, "Le mot de passe doit contenir au moins 9 caractères"],
       select: false, // Ne pas retourner le password par défaut
     },
     interests: [
@@ -47,6 +45,26 @@ const userSchema = new mongoose.Schema(
       maxlength: [500, "La bio ne peut pas dépasser 500 caractères"],
       default: "",
     },
+     followers: {
+      type: [String],
+      ref:'User'
+    },
+    followings: {
+      type: [String],
+      ref:'User'
+    },
+    likes: {
+      type: [String],
+    },
+     coins: { 
+    type: Number, 
+    default: 0,
+    min: 0 
+    },
+    processedRewards: [{ 
+    type: String, 
+    // unique: true 
+    }],
     connections: [
       {
         type: mongoose.Schema.Types.ObjectId,
