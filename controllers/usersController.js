@@ -2,8 +2,18 @@ const User = require("../models/User");
 const UserSession = require("../models/UserSession");
 const geohash = require("ngeohash");
 const jwt = require('jsonwebtoken');
-
+// const {StreamChat}  = require('stream-chat');
 const asyncHandler = require("../middleware/asyncHandler");
+
+// Initialiser le client Stream SERVEUR
+// const streamServerClient =new StreamChat(
+//   process.env.STREAM_API_KEY,   
+//   process.env.STREAM_API_SECRET,
+//  {
+//     timeout: 3000,
+//     logger: (type, msg) => console.log(`[Stream] ${type}: ${msg}`)
+//   }
+// );
 
 // 🛡️ DICTIONNAIRE DES RÉCOMPENSES (SECRET SERVEUR)
 const REWARD_VALUES = {
@@ -13,6 +23,113 @@ const REWARD_VALUES = {
 };
 // Configuration du taux (1 coin = 0.0001 USD par défaut)
 const COIN_EXCHANGE_RATE = 0.0001; // 10000 coins = 1 USD
+
+let StreamChat;
+try {
+  // Essayer différentes méthodes d'import
+  const streamModule = require('stream-chat')
+  
+  if (streamModule.StreamChat) {
+    StreamChat = streamModule.StreamChat;
+    console.log('✅ StreamChat importé comme propriété');
+  } else if (streamModule.default) {
+    StreamChat = streamModule.default;
+    console.log('✅ StreamChat importé comme default');
+  } else if (typeof streamModule === 'function') {
+    StreamChat = streamModule;
+    console.log('✅ Module entier est StreamChat');
+  } else {
+    throw new Error('Format d\'import non reconnu');
+  }
+} catch (error) {
+  console.error('❌ Erreur import stream-chat:', error);
+  throw error;
+}
+
+// Initialisation sécurisée
+let streamServerClient;
+
+try {
+  // Essayer getInstance d'abord
+  if (typeof StreamChat.getInstance === 'function') {
+    streamServerClient = StreamChat.getInstance(
+      process.env.STREAM_API_KEY,
+      process.env.STREAM_API_SECRET
+    );
+    console.log('✅ Client créé avec getInstance()');
+  } 
+  // Sinon essayer avec new
+  else if (typeof StreamChat === 'function') {
+    streamServerClient = new StreamChat(
+      process.env.STREAM_API_KEY,
+      process.env.STREAM_API_SECRET,
+      {
+        timeout: 10000,
+        logger: (type, msg) => console.log(`[Stream] ${type}: ${msg}`)
+      }
+    );
+    console.log('✅ Client créé avec new StreamChat()');
+  } else {
+    throw new Error('Impossible d\'initialiser StreamChat');
+  }
+} catch (error) {
+  console.error('❌ Erreur initialisation StreamChat:', error);
+  // Continuer sans Stream (pour le dev)
+  streamServerClient = null;
+}
+
+// 🔐 Route corrigée pour générer le token
+const generateStreamToken = asyncHandler(async (req, res) => {
+  try {
+    // Vérifier que le client Stream est initialisé
+    if (!streamServerClient) {
+      console.error('❌ streamServerClient non initialisé');
+      return res.status(500).json({
+        success: false,
+        message: 'Service Stream non disponible'
+      });
+    }
+
+    const userId = req.user._id.toString();
+    console.log('🎥 Génération token Stream pour:', userId);
+    
+    // 1. S'assurer que l'utilisateur existe dans Stream
+    await streamServerClient.upsertUser({
+      id: userId,
+      name: req.user.username || 'Utilisateur',
+      image: req.user.profilePicture || '',
+      // Autres champs optionnels
+    });
+    
+    // 2. Générer le token
+    const token = streamServerClient.createToken(userId);
+    
+    // 3. Format de réponse attendu par le frontend
+    res.status(200).json({
+      success: true,
+      data: {
+        token: token,
+        streamUser: {
+          id: userId,
+          name: req.user.username,
+          image: req.user.profilePicture || '',
+          // Le SDK frontend peut avoir besoin de ces champs
+          role: 'user'
+        }
+      }
+    });
+    
+    console.log('✅ Token Stream généré avec succès');
+    
+  } catch (error) {
+    console.error('❌ Erreur génération token Stream:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la génération du token vidéo',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
 
 // @desc     Get all users in data base
 // @route   GET /api/users/
@@ -26,46 +143,87 @@ const getAllUser = asyncHandler(async (req, res) => {
   });
 });
 // 🔐 Générer un token Stream pour l'utilisateur connecté
-const generateStreamToken = asyncHandler(async (req, res) => {
-  try {
-    // Votre middleware `protect` a déjà vérifié l'auth et mis `req.user`
-    const userId = req.user._id.toString();
-    // const userName = req.user.username;
-
-    // 1. Créer le payload JWT pour Stream
-    const payload = {
-      user_id: userId, // DOIT correspondre à l'id de l'utilisateur ASMAY
-      // Stream permet d'ajouter des claims custom si besoin
-    };
-
-    // 2. Signer avec votre SECRET_KEY Stream (à ajouter dans .env)
-    const token = jwt.sign(payload, process.env.STREAM_SECRET_KEY, {
-      expiresIn: '1h', // Token de courte durée
-      algorithm: 'HS256',
-    });
-
-    // 3. Retourner le token ET les infos utilisateur formatées pour Stream
-    res.status(200).json({
-      success: true,
-      data: {
-        token: token,
-        streamUser: {
-          id: userId,
-          username: req.user.username,
-          profilePicture: req.user.profilePicture || '', 
-          interests:req.user.interests
-        },
-      },
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur génération token Stream:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la génération du token vidéo',
-    });
-  }
-});
+// const generateStreamToken = asyncHandler(async (req, res) => {
+//   try {
+//     console.log('🔐 [STREAM TOKEN] Génération pour user:', req.user._id);
+//     
+//     // 1. Vérifiez que l'utilisateur existe dans Stream
+//     // Optionnel: créer l'utilisateur s'il n'existe pas
+//     await streamServerClient.upsertUser({
+//       id: req.user._id.toString(),
+//       name: req.user.username,
+//       profilePicture: req.user.profilePicture || '',
+//       // Autres champs si besoin
+//     });
+//     
+//     // 2. Générez le token Stream AVEC LE SDK
+//     const streamToken = streamServerClient.createToken(req.user._id.toString());
+//     
+//     // 3. Format de réponse que Stream Video SDK attend
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         token: streamToken, // ← Token généré par Stream SDK
+//         streamUser: {
+//           id: req.user._id.toString(),
+//           name: req.user.username,
+//           image: req.user.profilePicture || '',
+//           // Stream attend ces champs spécifiques
+//         }
+//       }
+//     });
+//     
+//     console.log('✅ Token Stream généré avec succès');
+//     
+//   } catch (error) {
+//     console.error('❌ Erreur génération token Stream:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Erreur génération token Stream',
+//       error: process.env.NODE_ENV === 'development' ? error.message : undefined
+//     });
+//   }
+// });
+// const generateStreamToken = asyncHandler(async (req, res) => {
+//   try {
+//     // Votre middleware `protect` a déjà vérifié l'auth et mis `req.user`
+//     const userId = req.user._id.toString();
+//     // const userName = req.user.username;
+// 
+//     // 1. Créer le payload JWT pour Stream
+//     const payload = {
+//       user_id: userId, // DOIT correspondre à l'id de l'utilisateur ASMAY
+//       // Stream permet d'ajouter des claims custom si besoin
+//     };
+// 
+//     // 2. Signer avec votre SECRET_KEY Stream (à ajouter dans .env)
+//     const token = jwt.sign(payload, process.env.STREAM_SECRET_KEY, {
+//       expiresIn: '1h', // Token de courte durée
+//       algorithm: 'HS256',
+//     });
+// 
+//     // 3. Retourner le token ET les infos utilisateur formatées pour Stream
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         token: token,
+//         streamUser: {
+//           id: userId,
+//           username: req.user.username,
+//           profilePicture: req.user.profilePicture || '', 
+//           interests:req.user.interests
+//         },
+//       },
+//     });
+// 
+//   } catch (error) {
+//     console.error('❌ Erreur génération token Stream:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Erreur lors de la génération du token vidéo',
+//     });
+//   }
+// });
 
 // (Optionnel) Webhook pour recevoir des événements de Stream
 const handleStreamWebhook = (req, res) => {

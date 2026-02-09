@@ -381,7 +381,7 @@ class SocketService {
       fromUserSessionId: fromSession.sessionId,
       toUserSessionId: toSessionId,
       commonInterests: commonInterests.slice(0, 3),
-      message:`Salut ${targetUser.username.toUpperCase()} 👋 ! Je suis ${currentUser.username.toUpperCase()}, j'aimerais vous faire connaitre si pouvez accepter mon signal ?`,
+      message:`Salut ${targetUser.username.toUpperCase()} 👋 ! Je suis ${currentUser.username.toUpperCase()}, J'aimerais vous faire connaitre si pouvez accepter mon signal ?`,
       chatId: chatId,
       status: "pending",
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
