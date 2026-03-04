@@ -100,10 +100,16 @@ exports.uploadProfilePicture = [
     }
 
     // Mettre à jour l'utilisateur avec le chemin de l'image
+    // Force HTTPS en production
+const baseUrl = process.env.NODE_ENV === 'production' 
+  ? `https://${req.get("host")}` 
+  : `${req.protocol}://${req.get("host")}`;
+  const fullImageUrl = `${baseUrl}/uploads/profiles/${req.file.filename}`;
+
     const user = await User.findByIdAndUpdate(
       req.user.id,
       {
-        profilePicture: `${req.protocol}://${req.get("host")}/uploads/profiles/${req.file.filename}`,
+        profilePicture: fullImageUrl,
       },
       { new: true }
     ).select("-password");
@@ -113,7 +119,6 @@ exports.uploadProfilePicture = [
       message: "Photo de profil uploadée avec succès",
       data: {
         profilePicture: user.profilePicture,
-        fullUrl: `${req.protocol}://${req.get("host")}${user.profilePicture}`,
       },
     });
   }),
