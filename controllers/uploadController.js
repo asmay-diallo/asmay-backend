@@ -103,7 +103,7 @@ exports.uploadProfilePicture = [
     const user = await User.findByIdAndUpdate(
       req.user.id,
       {
-        profilePicture: `/uploads/profiles/${req.file.filename}`,
+        profilePicture: `${req.protocol}://${req.get("host")}/uploads/profiles/${req.file.filename}`,
       },
       { new: true }
     ).select("-password");
