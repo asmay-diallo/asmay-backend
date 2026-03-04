@@ -14,7 +14,7 @@ const brainSchema = new mongoose.Schema(
       trim: true,
       maxlength: 500,
     },
-     picture: {
+    picture: {
       type: String,
       default: "",
     },

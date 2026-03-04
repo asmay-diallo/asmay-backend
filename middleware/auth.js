@@ -21,14 +21,14 @@ const protect = async (req, res, next) => {
         req.user = await User.findById(decoded.id).select('-password');
 
         if (!req.user) {
-          // console.log("❌ [PROTECT] User non trouvé avec ID:", decoded.id);
+          // console.log(" [PROTECT] User non trouvé avec ID:", decoded.id);
           return res.status(401).json({
             success: false,
-            message: 'Créer un compte ASMAY pour accéder à nos services !  '
+            message: 'Veuillez créer un compte ASMAY pour accéder à nos services !  '
           });
         }
 
-        // console.log("✅ [PROTECT] Authentification réussie pour:", req.user.username);
+        // console.log(" [PROTECT] Authentification réussie pour:", req.user.username);
         
         // Update last active
         req.user.lastActive = new Date();
@@ -36,15 +36,16 @@ const protect = async (req, res, next) => {
 
         return next(); // ← RETURN important!
       } catch (error) {
-        // console.error('❌ [PROTECT] Erreur vérification token:', error.message);
+        // console.error(' [PROTECT] Erreur vérification token:', error.message);
         return res.status(401).json({
           success: false,
           message: 'Verification a échouée, veuillez réessayer plus tard !'
         });
       }
-    } else {
+    }
+     else {
       // ✅ CORRECTION: Ajout du ELSE manquant
-      // console.log("❌ [PROTECT] Aucun token Bearer trouvé");
+      console.log("❌ [PROTECT] Aucun token Bearer trouvé");
       return res.status(401).json({
         success: false,
         message: 'Veuillez créer un compte ASMAY pour avoir accès à nos services'

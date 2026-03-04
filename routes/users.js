@@ -30,15 +30,15 @@ const {
     initiateVideoCall
 } = require("../controllers/usersController");
 
-console.log("✅ Route users chargée - getNearbyUsers importé:", typeof getNearbyUsers);
+console.log(" Route users chargée - getNearbyUsers importé:", typeof getNearbyUsers);
 const { protect } = require("../middleware/auth");
 
-// ✅ TOUTES LES ROUTES SONT PROTÉGÉES
+//  TOUTES LES ROUTES SONT PROTÉGÉES
 router.use(protect);
 
 // Routes existantes
 
-// ✅ CORRECTION - UNE SEULE FOIS chaque route
+// UNE SEULE FOIS chaque route
 router.get("/nearby-users",protect, getNearbyUsers);
 router.put("/location", protect,updateLocation);
 router.route("/profile").get(protect,getUserProfile).put(protect,updateUserProfile);

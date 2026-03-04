@@ -142,7 +142,7 @@ const getAllUser = asyncHandler(async (req, res) => {
     data: users,
   });
 });
-// 🔐 Générer un token Stream pour l'utilisateur connecté
+//  Générer un token Stream pour l'utilisateur connecté
 // const generateStreamToken = asyncHandler(async (req, res) => {
 //   try {
 //     console.log('🔐 [STREAM TOKEN] Génération pour user:', req.user._id);

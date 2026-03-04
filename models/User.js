@@ -53,7 +53,7 @@ const userSchema = new mongoose.Schema(
       type: [String],
       ref:'User'
     },
-    likes: {
+    likers: {
       type: [String],
     },
      coins: { 

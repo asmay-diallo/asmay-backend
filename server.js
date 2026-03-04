@@ -3,6 +3,8 @@ const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
 const mongoose = require("mongoose");
+require("dotenv").config();
+
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
@@ -16,7 +18,6 @@ const SocketService = require("./services/socketServices");
 
 const app = express();
 const server = http.createServer(app);
-require("dotenv").config();
 
 //  Créer les dossiers uploads 
 const uploadDirs = [
