@@ -759,6 +759,202 @@ const updateLocation = asyncHandler(async (req, res) => {
     });
   }
 });
+const getNearbyUsers = asyncHandler(async (req, res) => {
+  const { latitude, longitude } = req.query;
+  const userLat = parseFloat(latitude);
+  const userLon = parseFloat(longitude);
+  
+  // Configuration
+  const TARGET_USER_COUNT = 50; // Nombre d'utilisateurs souhaité
+  const MAX_LEVEL = 7; // Niveau le plus précis (rue)
+  const MIN_LEVEL = 1; // Niveau le plus large (continent)
+
+  // 1. Mettre à jour la session utilisateur (toujours avec précision 7)
+  const currentGeohash = geohash.encode(userLat, userLon, 7);
+  
+  const userSession = await UserSession.findOneAndUpdate(
+    { userId: req.user._id },
+    {
+      userId: req.user._id,
+      sessionId: `session_${req.user._id}`,
+      lastKnownGeohash: currentGeohash,
+      lat: userLat,
+      lon: userLon,
+      isActive: true,
+      lastUpdated: new Date()
+    },
+    { upsert: true, new: true }
+  );
+
+  // 2. Recherche progressive
+  let nearbySessions = [];
+  let currentLevel = 7; // Commence par le niveau le plus précis (rue)
+  let geohashPrefix;
+  
+  while (nearbySessions.length < TARGET_USER_COUNT && currentLevel >= MIN_LEVEL) {
+    // Construire le geohash avec la précision actuelle
+    geohashPrefix = geohash.encode(userLat, userLon, currentLevel);
+    
+    console.log(`🔍 Recherche niveau ${currentLevel}: ${geohashPrefix}`);
+    
+    // Rechercher les utilisateurs avec ce préfixe
+    const query = {
+      isActive: true,
+      userId: { $ne: req.user._id },
+      lastUpdated: { $gte: new Date(Date.now() - 30 * 60 * 1000) } // 30 min
+    };
+    
+    // Si ce n'est pas le niveau le plus bas (monde), ajouter le filtre geohash
+    if (currentLevel > 1) {
+      query.lastKnownGeohash = { $regex: `^${geohashPrefix}` };
+    }
+    // Niveau 1 = continent, pas de filtre pour le monde entier
+    
+    const sessions = await UserSession.find(query)
+      .populate('userId', 'username profilePicture interests privacySettings location')
+      .limit(TARGET_USER_COUNT * 2); // Limite pour performance
+    
+    nearbySessions = sessions;
+    
+    // Si pas assez d'utilisateurs, élargir au niveau supérieur
+    if (nearbySessions.length < TARGET_USER_COUNT) {
+      currentLevel--;
+      console.log(`📊 Seulement ${nearbySessions.length} trouvés, élargissement au niveau ${currentLevel}`);
+    }
+  }
+
+  // 3. Si toujours pas assez, prendre tous les utilisateurs actifs
+  if (nearbySessions.length < 10) {
+    console.log("🌍 Pas assez d'utilisateurs proches, recherche dans le monde entier");
+    nearbySessions = await UserSession.find({
+      isActive: true,
+      userId: { $ne: req.user._id },
+      lastUpdated: { $gte: new Date(Date.now() - 60 * 60 * 1000) } // 1 heure
+    })
+    .populate('userId', 'username profilePicture interests privacySettings location')
+    .limit(TARGET_USER_COUNT);
+    
+    currentLevel = 0; // Niveau "monde"
+  }
+
+  // 4. Transformer les résultats
+  let nearbyUsers = [];
+
+  if (nearbySessions.length > 0) {
+    nearbyUsers = nearbySessions.map(session => {
+      const user = session.userId;
+      
+      const distanceInMeters = calculateDistance(
+        userLat, userLon, 
+        session.lat, session.lon
+      );
+      
+      const bearing = calculateBearing(
+        userLat, userLon, 
+        session.lat, session.lon
+      );
+      
+      const commonInterests = user.interests?.filter((interest) =>
+        req.user.interests?.includes(interest)
+      ) || [];
+
+      // Déterminer le libellé de précision selon le niveau atteint
+      let precisionText = "";
+      let precisionIcon = "";
+      let precisionLevel = "";
+      
+      switch(currentLevel) {
+        case 7:
+          precisionText = "dans votre rue";
+          precisionIcon = "🚶";
+          precisionLevel = "Rue";
+          break;
+        case 6:
+          precisionText = "dans votre quartier";
+          precisionIcon = "🏘️";
+          precisionLevel = "Quartier";
+          break;
+        case 5:
+          precisionText = "à proximité";
+          precisionIcon = "🚲";
+          precisionLevel = "Proximité";
+          break;
+        case 4:
+          precisionText = "dans votre ville";
+          precisionIcon = "🏙️";
+          precisionLevel = "Ville";
+          break;
+        case 3:
+          precisionText = "dans votre région";
+          precisionIcon = "🗺️";
+          precisionLevel = "Région";
+          break;
+        case 2:
+          precisionText = "dans votre pays";
+          precisionIcon = "🌍";
+          precisionLevel = "Pays";
+          break;
+        case 1:
+          precisionText = "sur votre continent";
+          precisionIcon = "🌎";
+          precisionLevel = "Continent";
+          break;
+        default:
+          precisionText = "dans le monde";
+          precisionIcon = "🌏";
+          precisionLevel = "Monde";
+      }
+
+      return {
+        _id: user._id,
+        username: user.username,
+        profilePicture: user.profilePicture,
+        privacySettings: user.privacySettings,
+        distance: Math.round(distanceInMeters),
+        bearing: bearing,
+        precision: {
+          level: currentLevel,
+          name: precisionLevel,
+          text: precisionText,
+          icon: precisionIcon
+        },
+        interests: {
+          common: commonInterests,
+          count: commonInterests.length
+        },
+        toSessionId: session.sessionId,
+        lastActive: session.lastUpdated
+      };
+    });
+  }
+
+  // 5. Trier par distance (les plus proches d'abord)
+  nearbyUsers.sort((a, b) => a.distance - b.distance);
+
+  // 6. Réponse
+  res.status(200).json({
+    success: true,
+    data: {
+      users: nearbyUsers,
+      currentSessionId: userSession.sessionId,
+      searchLevel: currentLevel,
+      searchLevelName: currentLevel === 0 ? "Monde" : 
+                       currentLevel === 1 ? "Continent" :
+                       currentLevel === 2 ? "Pays" :
+                       currentLevel === 3 ? "Région" :
+                       currentLevel === 4 ? "Ville" :
+                       currentLevel === 5 ? "Proximité" :
+                       currentLevel === 6 ? "Quartier" : "Rue",
+      totalFound: nearbyUsers.length,
+      targetCount: TARGET_USER_COUNT,
+      debug: {
+        userPosition: { lat: userLat, lon: userLon },
+        startGeohash: currentGeohash,
+        finalPrefix: geohashPrefix
+      }
+    }
+  });
+});
 
 // Helper function to calculate bearing
 function calculateBearing(lat1, lon1, lat2, lon2) {
