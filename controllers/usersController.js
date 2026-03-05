@@ -620,83 +620,83 @@ const getUserStats = asyncHandler(async (req, res) => {
 // // @desc    Get nearby users
 // // @route   GET /api/users/nearby?lat=...&lon=...&distance=...
 // // @access  Private
-
-const getNearbyUsers = asyncHandler(async (req, res) => {
-  const { latitude, longitude } = req.query;
-  const userLat = parseFloat(latitude);
-  const userLon = parseFloat(longitude);
-
-  // VRAIE LOGIQUE
-  const currentGeohash = geohash.encode(userLat, userLon, process.env.GEOHASH_PRECISION);
-  // Les méthodes de geohashing sont nécessaires ------------------------
-
-
-  // Mettre à jour la session
-  const userSession = await UserSession.findOneAndUpdate(
-    { userId: req.user._id },
-    {
-      userId: req.user._id,
-      sessionId: `session_${req.user._id}`,
-      lastKnownGeohash: currentGeohash,
-      lat: userLat,
-      lon: userLon,
-      isActive: true,
-      lastUpdated: new Date()
-    },
-    { upsert: true, new: true }
-  );
-
-  // Trouver les utilisateurs proches
-  const nearbySessions = await UserSession.find({
-    lastKnownGeohash: currentGeohash,
-    isActive: true,
-    userId: { $ne: req.user._id },
-    lastUpdated: { $gte: new Date(Date.now() - 30 * 60 * 1000) }
-  }).populate('userId', 'username profilePicture interests privacySettings');
-
-  let nearbyUsers = [];
-
-  if (nearbySessions.length > 0) {
-    // Vrais utilisateurs
-    nearbyUsers = nearbySessions.map(session => {
-      const user = session.userId;
-      
-      //  Utiliser calculateDistance 
-      const distanceInMeters = calculateDistance(userLat, userLon, session.lat, session.lon);
-      const bearing = calculateBearing(userLat, userLon, session.lat, session.lon);
-      
-      const commonInterests = user.interests?.filter((interest) =>
-       req.user.interests?.includes(interest)
-      ) || [];
-
-      return {
-        _id: user._id,
-        username: user.username,
-        profilePicture: user.profilePicture,
-        privacySettings:user.privacySettings,
-        distance: Math.round(distanceInMeters), // Maintenant en mètres précis
-        bearing: bearing, //  Angle 
-        precision: { level: 7 , text: "dans votre rue", icon: "🚩" },
-        interests: {
-          common: [commonInterests],
-          count: commonInterests.length
-        },
-        toSessionId: session.sessionId
-      };
-    });
-  }
-
-  res.status(200).json({
-    success: true,
-    data: {
-      users: nearbyUsers,
-      currentSessionId: userSession.sessionId,
-      debug: {
-        realUsers: nearbySessions.length
-      }
-    }
-  });
-});
+// 
+// const getNearbyUsers = asyncHandler(async (req, res) => {
+//   const { latitude, longitude } = req.query;
+//   const userLat = parseFloat(latitude);
+//   const userLon = parseFloat(longitude);
+// 
+//   // VRAIE LOGIQUE
+//   const currentGeohash = geohash.encode(userLat, userLon, process.env.GEOHASH_PRECISION);
+//   // Les méthodes de geohashing sont nécessaires ------------------------
+// 
+// 
+//   // Mettre à jour la session
+//   const userSession = await UserSession.findOneAndUpdate(
+//     { userId: req.user._id },
+//     {
+//       userId: req.user._id,
+//       sessionId: `session_${req.user._id}`,
+//       lastKnownGeohash: currentGeohash,
+//       lat: userLat,
+//       lon: userLon,
+//       isActive: true,
+//       lastUpdated: new Date()
+//     },
+//     { upsert: true, new: true }
+//   );
+// 
+//   // Trouver les utilisateurs proches
+//   const nearbySessions = await UserSession.find({
+//     lastKnownGeohash: currentGeohash,
+//     isActive: true,
+//     userId: { $ne: req.user._id },
+//     lastUpdated: { $gte: new Date(Date.now() - 30 * 60 * 1000) }
+//   }).populate('userId', 'username profilePicture interests privacySettings');
+// 
+//   let nearbyUsers = [];
+// 
+//   if (nearbySessions.length > 0) {
+//     // Vrais utilisateurs
+//     nearbyUsers = nearbySessions.map(session => {
+//       const user = session.userId;
+//       
+//       //  Utiliser calculateDistance 
+//       const distanceInMeters = calculateDistance(userLat, userLon, session.lat, session.lon);
+//       const bearing = calculateBearing(userLat, userLon, session.lat, session.lon);
+//       
+//       const commonInterests = user.interests?.filter((interest) =>
+//        req.user.interests?.includes(interest)
+//       ) || [];
+// 
+//       return {
+//         _id: user._id,
+//         username: user.username,
+//         profilePicture: user.profilePicture,
+//         privacySettings:user.privacySettings,
+//         distance: Math.round(distanceInMeters), // Maintenant en mètres précis
+//         bearing: bearing, //  Angle 
+//         precision: { level: 7 , text: "dans votre rue", icon: "🚩" },
+//         interests: {
+//           common: [commonInterests],
+//           count: commonInterests.length
+//         },
+//         toSessionId: session.sessionId
+//       };
+//     });
+//   }
+// 
+//   res.status(200).json({
+//     success: true,
+//     data: {
+//       users: nearbyUsers,
+//       currentSessionId: userSession.sessionId,
+//       debug: {
+//         realUsers: nearbySessions.length
+//       }
+//     }
+//   });
+// });
 
 const calculateProfileCompletion = (user) => {
   let completion = 0;
@@ -770,7 +770,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
   const MIN_LEVEL = 1; // Niveau le plus large (continent)
 
   // 1. Mettre à jour la session utilisateur (toujours avec précision 7)
-  const currentGeohash = geohash.encode(userLat, userLon, 7);
+  const currentGeohash = geohash.encode(userLat, userLon, process.env.GEOHASH_PRECISION);
   
   const userSession = await UserSession.findOneAndUpdate(
     { userId: req.user._id },
