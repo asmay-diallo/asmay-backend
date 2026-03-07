@@ -1098,6 +1098,17 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
     
     currentLevel = 0;
   }
+ //  Mapping plus précis des niveaux
+    const levelConfig = {
+      7: { text: "dans votre rue", icon: "🚶", name: "Rue" },
+      6: { text: "dans votre quartier", icon: "🏘️", name: "Quartier" },
+      5: { text: "à proximité", icon: "🚲", name: "Proximité" },
+      4: { text: "dans votre ville", icon: "🏙️", name: "Ville" },
+      3: { text: "dans votre région", icon: "🗺️", name: "Région" },
+      2: { text: "dans votre pays", icon: "🌍", name: "Pays" },
+      1: { text: "sur votre continent", icon: "🌎", name: "Continent" },
+      0: { text: "dans le monde", icon: "🌏", name: "Monde" }
+    };
 
   //  Amélioration du mapping avec validation geohash
   const nearbyUsers = await Promise.all(nearbySessions.map(async session => {
@@ -1130,17 +1141,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
     // Déterminer le niveau réel de l'utilisateur
     const userLevel = session.lastKnownGeohash?.length || currentLevel;
     
-    //  Mapping plus précis des niveaux
-    const levelConfig = {
-      7: { text: "dans votre rue", icon: "🚶", name: "Rue" },
-      6: { text: "dans votre quartier", icon: "🏘️", name: "Quartier" },
-      5: { text: "à proximité", icon: "🚲", name: "Proximité" },
-      4: { text: "dans votre ville", icon: "🏙️", name: "Ville" },
-      3: { text: "dans votre région", icon: "🗺️", name: "Région" },
-      2: { text: "dans votre pays", icon: "🌍", name: "Pays" },
-      1: { text: "sur votre continent", icon: "🌎", name: "Continent" },
-      0: { text: "dans le monde", icon: "🌏", name: "Monde" }
-    };
+   
 
     const precisionInfo = levelConfig[userLevel] || levelConfig[0];
 
@@ -1177,7 +1178,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
   // 5. Trier par distance
   nearbyUsers.sort((a, b) => a.distance - b.distance);
 
-  // 6. 🔧 CORRECTION 7: Statistiques enrichies
+  // 6. Statistiques enrichies
   const stats = {
     byLevel: {},
     totalDistance: nearbyUsers.reduce((acc, u) => acc + u.distance, 0)
