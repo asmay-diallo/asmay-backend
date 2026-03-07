@@ -1014,6 +1014,203 @@ const updateLocation = asyncHandler(async (req, res) => {
   }
 });
 
+// const getNearbyUsers = asyncHandler(async (req, res) => {
+//   const { latitude, longitude } = req.query;
+//   
+//   if (!latitude || !longitude) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Latitude et longitude requises"
+//     });
+//   }
+// 
+//   const userLat = parseFloat(latitude);
+//   const userLon = parseFloat(longitude);
+//   const precision = parseInt(process.env.GEOHASH_PRECISION) || 7;
+//   
+//   // Configuration
+//   const TARGET_USER_COUNT = 50;
+//   const MIN_LEVEL = 1;
+// 
+//   // 1. Mettre à jour la session utilisateur
+//   const currentGeohash = geohash.encode(userLat, userLon, precision);
+//   
+//   const userSession = await UserSession.findOneAndUpdate(
+//     { userId: req.user._id },
+//     {
+//       userId: req.user._id,
+//       sessionId: `session_${req.user._id}`,
+//       lastKnownGeohash: currentGeohash,
+//       lat: userLat,
+//       lon: userLon,
+//       isActive: true,
+//       lastUpdated: new Date()
+//     },
+//     { upsert: true, new: true }
+//   );
+// 
+//   // 2. Recherche progressive
+//   let nearbySessions = [];
+//   let currentLevel = precision; // Commence par le niveau max
+//   let finalPrefix = '';
+//   const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+//   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+//   
+//   while (nearbySessions.length < TARGET_USER_COUNT && currentLevel >= MIN_LEVEL) {
+//     // Construire le geohash avec la précision actuelle
+//     finalPrefix = geohash.encode(userLat, userLon, currentLevel);
+//     
+//     console.log(`🔍 Recherche niveau ${currentLevel}: ${finalPrefix}`);
+//     
+//     const query = {
+//       isActive: true,
+//       userId: { $ne: req.user._id },
+//       lastUpdated: { $gte: thirtyMinutesAgo }
+//     };
+//     
+//     // 🔧 CORRECTION 3: Amélioration du filtre geohash
+//     if (currentLevel > 1) {
+//       query.lastKnownGeohash = { 
+//         $regex: `^${finalPrefix}`,
+//         $exists: true 
+//       };
+//     }
+//     
+//     nearbySessions = await UserSession.find(query)
+//       .populate('userId', 'username profilePicture interests privacySettings location locationHistory')
+//       .limit(TARGET_USER_COUNT * 2);
+//     
+//     if (nearbySessions.length < TARGET_USER_COUNT) {
+//       currentLevel--;
+//     }
+//   }
+// 
+//   // 3. Fallback monde entier
+//   if (nearbySessions.length < 10) {
+//     console.log("🌍 Recherche dans le monde entier");
+//     nearbySessions = await UserSession.find({
+//       isActive: true,
+//       userId: { $ne: req.user._id },
+//       lastUpdated: { $gte: oneHourAgo }
+//     })
+//     .populate('userId', 'username profilePicture interests privacySettings')
+//     .limit(TARGET_USER_COUNT);
+//     
+//     currentLevel = 0;
+//   }
+//  //  Mapping plus précis des niveaux
+//     const levelConfig = {
+//       7: { text: "dans votre rue", icon: "🚶", name: "Rue" },
+//       6: { text: "dans votre quartier", icon: "🏘️", name: "Quartier" },
+//       5: { text: "à proximité", icon: "🚲", name: "Proximité" },
+//       4: { text: "dans votre ville", icon: "🏙️", name: "Ville" },
+//       3: { text: "dans votre région", icon: "🗺️", name: "Région" },
+//       2: { text: "dans votre pays", icon: "🌍", name: "Pays" },
+//       1: { text: "sur votre continent", icon: "🌎", name: "Continent" },
+//       0: { text: "dans le monde", icon: "🌏", name: "Monde" }
+//     };
+// 
+//   //  Amélioration du mapping avec validation geohash
+//   const nearbyUsers = await Promise.all(nearbySessions.map(async session => {
+//     const user = session.userId;
+//     
+//     //  Vérifier la cohérence du geohash
+//     if (session.lat && session.lon) {
+//       const expectedGeohash = geohash.encode(session.lat, session.lon, precision);
+//       if (session.lastKnownGeohash !== expectedGeohash) {
+//         console.log(` Incohérence détectée pour user ${user._id}`);
+//         session.lastKnownGeohash = expectedGeohash;
+//         await session.save();
+//       }
+//     }
+//     
+//     const distanceInMeters = calculateDistance(
+//       userLat, userLon, 
+//       session.lat, session.lon
+//     );
+//     
+//     const bearing = calculateBearing(
+//       userLat, userLon, 
+//       session.lat, session.lon
+//     );
+//     
+//     const commonInterests = user.interests?.filter(interest =>
+//       req.user.interests?.includes(interest)
+//     ) || [];
+// 
+//     // Déterminer le niveau réel de l'utilisateur
+//     const userLevel = session.lastKnownGeohash?.length || currentLevel;
+//     
+//    
+// 
+//     const precisionInfo = levelConfig[userLevel] || levelConfig[0];
+// 
+//     return {
+//       _id: user._id,
+//       username: user.username,
+//       profilePicture: user.profilePicture,
+//       privacySettings: user.privacySettings,
+//       distance: Math.round(distanceInMeters),
+//       bearing: bearing,
+//       precision: {
+//         level: userLevel,
+//         name: precisionInfo.name,
+//         text: precisionInfo.text,
+//         icon: precisionInfo.icon
+//       },
+//       interests: {
+//         common: commonInterests,
+//         count: commonInterests.length
+//       },
+//       toSessionId: session.sessionId,
+//       lastActive: session.lastUpdated,
+//       // 🔧 CORRECTION 6: Ajout d'informations de debug utiles
+//       location: {
+//         geohash: session.lastKnownGeohash,
+//         coords: session.lat && session.lon ? {
+//           lat: session.lat,
+//           lon: session.lon
+//         } : null
+//       }
+//     };
+//   }));
+// 
+//   // 5. Trier par distance
+//   nearbyUsers.sort((a, b) => a.distance - b.distance);
+// 
+//   // 6. Statistiques enrichies
+//   const stats = {
+//     byLevel: {},
+//     totalDistance: nearbyUsers.reduce((acc, u) => acc + u.distance, 0)
+//   };
+//   
+//   nearbyUsers.forEach(u => {
+//     const level = u.precision.level;
+//     stats.byLevel[level] = (stats.byLevel[level] || 0) + 1;
+//   });
+// 
+//   res.status(200).json({
+//     success: true,
+//     data: {
+//       users: nearbyUsers,
+//       currentSessionId: userSession.sessionId,
+//       searchLevel: currentLevel,
+//       searchLevelName: levelConfig[currentLevel]?.name || "Monde",
+//       totalFound: nearbyUsers.length,
+//       targetCount: TARGET_USER_COUNT,
+//       stats: stats,
+//       debug: {
+//         userPosition: { lat: userLat, lon: userLon },
+//         userGeohash: currentGeohash,
+//         finalSearchPrefix: finalPrefix,
+//         timestamp: new Date()
+//       }
+//     }
+//   });
+// });
+
+// Helper function to calculate bearing
+
 const getNearbyUsers = asyncHandler(async (req, res) => {
   const { latitude, longitude } = req.query;
   
@@ -1051,13 +1248,12 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
 
   // 2. Recherche progressive
   let nearbySessions = [];
-  let currentLevel = precision; // Commence par le niveau max
+  let currentLevel = precision;
   let finalPrefix = '';
   const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
   
   while (nearbySessions.length < TARGET_USER_COUNT && currentLevel >= MIN_LEVEL) {
-    // Construire le geohash avec la précision actuelle
     finalPrefix = geohash.encode(userLat, userLon, currentLevel);
     
     console.log(`🔍 Recherche niveau ${currentLevel}: ${finalPrefix}`);
@@ -1068,7 +1264,6 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
       lastUpdated: { $gte: thirtyMinutesAgo }
     };
     
-    // 🔧 CORRECTION 3: Amélioration du filtre geohash
     if (currentLevel > 1) {
       query.lastKnownGeohash = { 
         $regex: `^${finalPrefix}`,
@@ -1098,27 +1293,42 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
     
     currentLevel = 0;
   }
- //  Mapping plus précis des niveaux
-    const levelConfig = {
-      7: { text: "dans votre rue", icon: "🚶", name: "Rue" },
-      6: { text: "dans votre quartier", icon: "🏘️", name: "Quartier" },
-      5: { text: "à proximité", icon: "🚲", name: "Proximité" },
-      4: { text: "dans votre ville", icon: "🏙️", name: "Ville" },
-      3: { text: "dans votre région", icon: "🗺️", name: "Région" },
-      2: { text: "dans votre pays", icon: "🌍", name: "Pays" },
-      1: { text: "sur votre continent", icon: "🌎", name: "Continent" },
-      0: { text: "dans le monde", icon: "🌏", name: "Monde" }
-    };
 
-  //  Amélioration du mapping avec validation geohash
+  //  Déplacer levelConfig ICI (scope global de la fonction)
+  const levelConfig = {
+    7: { text: "dans votre rue", icon: "🚶", name: "Rue" },
+    6: { text: "dans votre quartier", icon: "🏘️", name: "Quartier" },
+    5: { text: "à proximité", icon: "🚲", name: "Proximité" },
+    4: { text: "dans votre ville", icon: "🏙️", name: "Ville" },
+    3: { text: "dans votre région", icon: "🗺️", name: "Région" },
+    2: { text: "dans votre pays", icon: "🌍", name: "Pays" },
+    1: { text: "sur votre continent", icon: "🌎", name: "Continent" },
+    0: { text: "dans le monde", icon: "🌏", name: "Monde" }
+  };
+
+  //  Nouvelle fonction basée sur la distance RÉELLE
+  const getPrecisionFromDistance = (distance) => {
+    if (distance < 50) return { text: " Quelques mètres", icon: "📍" };
+    if (distance < 100) return { text: "Très proche", icon: "📍" };
+    if (distance < 500) return { text: "Dans votre rue", icon: "🚶" };
+    if (distance < 1000) return { text: " 10 min à pied", icon: "👣" };
+    if (distance < 3000) return { text: "Dans votre quartier", icon: "🏘️" };
+    if (distance < 10000) return { text: "Dans votre ville", icon: "🏙️" };
+    if (distance < 50000) return { text: "Dans votre région", icon: "🗺️" };
+    if (distance < 500000) return { text: "Dans votre pays", icon: "🌍" };
+    if (distance < 1000000) return { text: "Dans votre continent", icon: "🌍" };
+    return { text: "Dans le monde", icon: "🌏" };
+  };
+
+  // 4. Mapping des utilisateurs avec la nouvelle logique
   const nearbyUsers = await Promise.all(nearbySessions.map(async session => {
     const user = session.userId;
     
-    //  Vérifier la cohérence du geohash
+    // Vérifier la cohérence du geohash
     if (session.lat && session.lon) {
       const expectedGeohash = geohash.encode(session.lat, session.lon, precision);
       if (session.lastKnownGeohash !== expectedGeohash) {
-        console.log(` Incohérence détectée pour user ${user._id}`);
+        console.log(`⚠️ Incohérence détectée pour user ${user._id}`);
         session.lastKnownGeohash = expectedGeohash;
         await session.save();
       }
@@ -1138,12 +1348,11 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
       req.user.interests?.includes(interest)
     ) || [];
 
-    // Déterminer le niveau réel de l'utilisateur
     const userLevel = session.lastKnownGeohash?.length || currentLevel;
     
-   
-
-    const precisionInfo = levelConfig[userLevel] || levelConfig[0];
+    //  Utiliser la distance pour le texte, le geohash pour le niveau technique
+    const distancePrecision = getPrecisionFromDistance(distanceInMeters);
+    const geohashPrecision = levelConfig[userLevel] || levelConfig[0];
 
     return {
       _id: user._id,
@@ -1154,9 +1363,10 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
       bearing: bearing,
       precision: {
         level: userLevel,
-        name: precisionInfo.name,
-        text: precisionInfo.text,
-        icon: precisionInfo.icon
+        //  nom technique du geohash, texte basé sur la distance
+        name: geohashPrecision.name,
+        text: distancePrecision.text, // ✅ Maintenant basé sur la VRAIE distance
+        icon: distancePrecision.icon   // ✅ Icône basée sur la distance
       },
       interests: {
         common: commonInterests,
@@ -1164,7 +1374,6 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
       },
       toSessionId: session.sessionId,
       lastActive: session.lastUpdated,
-      // 🔧 CORRECTION 6: Ajout d'informations de debug utiles
       location: {
         geohash: session.lastKnownGeohash,
         coords: session.lat && session.lon ? {
@@ -1178,7 +1387,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
   // 5. Trier par distance
   nearbyUsers.sort((a, b) => a.distance - b.distance);
 
-  // 6. Statistiques enrichies
+  // 6. Statistiques
   const stats = {
     byLevel: {},
     totalDistance: nearbyUsers.reduce((acc, u) => acc + u.distance, 0)
@@ -1189,13 +1398,25 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
     stats.byLevel[level] = (stats.byLevel[level] || 0) + 1;
   });
 
+  //  Amélioration du nom du niveau de recherche
+  const getSearchLevelName = (level) => {
+    if (level === 7) return "Recherche rue";
+    if (level === 6) return "Recherche quartier";
+    if (level === 5) return "Recherche proximité";
+    if (level === 4) return "Recherche ville";
+    if (level === 3) return "Recherche région";
+    if (level === 2) return "Recherche pays";
+    if (level === 1) return "Recherche continent";
+    return "Recherche monde";
+  };
+
   res.status(200).json({
     success: true,
     data: {
       users: nearbyUsers,
       currentSessionId: userSession.sessionId,
       searchLevel: currentLevel,
-      searchLevelName: levelConfig[currentLevel]?.name || "Monde",
+      searchLevelName: getSearchLevelName(currentLevel), // ✅ Plus clair
       totalFound: nearbyUsers.length,
       targetCount: TARGET_USER_COUNT,
       stats: stats,
@@ -1209,7 +1430,6 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
   });
 });
 
-// Helper function to calculate bearing
 function calculateBearing(lat1, lon1, lat2, lon2) {
   const toRad = (deg) => deg * (Math.PI / 180);
   const toDeg = (rad) => rad * (180 / Math.PI);
