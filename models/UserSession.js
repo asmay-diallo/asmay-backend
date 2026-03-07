@@ -41,4 +41,6 @@ const mongoose = require("mongoose");
 });
 
 
+userSessionSchema.index({ lastKnownGeohash: 1, isActive: 1, lastUpdated: -1 });
+userSessionSchema.index({ userId: 1, lastUpdated: -1 });
 module.exports = mongoose.model("UserSession", userSessionSchema);
