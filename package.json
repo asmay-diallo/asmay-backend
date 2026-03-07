@@ -3,7 +3,7 @@
   "type": "commonjs",
   "version": "1.0.0",
   "main": "server.js",
-  "favicon":"./assets/images/asmay-icon.png",
+  "favicon": "./assets/images/asmay-icon.png",
   "engines": {
     "node": "20.19.5"
   },
@@ -18,6 +18,7 @@
   "description": "",
   "dependencies": {
     "@stream-io/node-sdk": "^0.7.40",
+    "axios": "^1.13.6",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "compression": "^1.8.1",
@@ -31,6 +32,7 @@
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "ngeohash": "^0.6.3",
+    "node-cache": "^5.1.2",
     "socket.io": "^4.8.1",
     "stream-chat": "^9.31.0",
     "uuid": "^13.0.0"
