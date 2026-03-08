@@ -1984,14 +1984,15 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
       distance: Math.round(distanceInMeters),
       bearing: bearing,
       // ✅ Informations de localisation avec le NOM RÉEL
-      location: {
-        display: placeInfo.text,  // "Rue de Rivoli" ou "Paris" ou "France"
+      precision: {
+        text: placeInfo.text,  // "Rue de Rivoli" ou "Paris" ou "France"
         icon: placeInfo.icon,
         geohash: session.lastKnownGeohash,
-        level: {
-          value: userLevel,
-          name: geohashPrecision.name
-        }
+        level: userLevel,
+        // {
+        //   value: userLevel,
+        //   name: geohashPrecision.name
+        // }
       },
       interests: {
         common: commonInterests,
