@@ -2017,7 +2017,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
   };
   
   nearbyUsers.forEach(u => {
-    const level = u.location.level.value;
+    const level = u.location.level;
     stats.byLevel[level] = (stats.byLevel[level] || 0) + 1;
   });
 
