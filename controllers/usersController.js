@@ -1433,6 +1433,340 @@ const updateLocation = asyncHandler(async (req, res) => {
 // });
 
 
+// const getNearbyUsers = asyncHandler(async (req, res) => {
+//   const { latitude, longitude } = req.query;
+//   
+//   if (!latitude || !longitude) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Latitude et longitude requises"
+//     });
+//   }
+// 
+//   const userLat = parseFloat(latitude);
+//   const userLon = parseFloat(longitude);
+//   const precision = parseInt(process.env.GEOHASH_PRECISION) || 7;
+//   
+//   // Configuration
+//   const TARGET_USER_COUNT = 50;
+//   const MIN_LEVEL = 1;
+// 
+//   // 1. Mettre à jour la session utilisateur
+//   const currentGeohash = geohash.encode(userLat, userLon, precision);
+//   
+//   const userSession = await UserSession.findOneAndUpdate(
+//     { userId: req.user._id },
+//     {
+//       userId: req.user._id,
+//       sessionId: `session_${req.user._id}`,
+//       lastKnownGeohash: currentGeohash,
+//       lat: userLat,
+//       lon: userLon,
+//       isActive: true,
+//       lastUpdated: new Date()
+//     },
+//     { upsert: true, new: true }
+//   );
+// 
+//   // 2. Recherche progressive
+//   let nearbySessions = [];
+//   let currentLevel = precision;
+//   let finalPrefix = '';
+//   const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+//   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+//   
+//   while (nearbySessions.length < TARGET_USER_COUNT && currentLevel >= MIN_LEVEL) {
+//     finalPrefix = geohash.encode(userLat, userLon, currentLevel);
+//     
+//     console.log(`🔍 Recherche niveau ${currentLevel}: ${finalPrefix}`);
+//     
+//     const query = {
+//       isActive: true,
+//       userId: { $ne: req.user._id },
+//       lastUpdated: { $gte: thirtyMinutesAgo }
+//     };
+//     
+//     if (currentLevel > 1) {
+//       query.lastKnownGeohash = { 
+//         $regex: `^${finalPrefix}`,
+//         $exists: true 
+//       };
+//     }
+//     
+//     nearbySessions = await UserSession.find(query)
+//       .populate('userId', 'username profilePicture interests privacySettings')
+//       .limit(TARGET_USER_COUNT * 2);
+//     
+//     if (nearbySessions.length < TARGET_USER_COUNT) {
+//       currentLevel--;
+//     }
+//   }
+// 
+//   // 3. Fallback monde entier
+//   if (nearbySessions.length < 10) {
+//     console.log("🌍 Recherche dans le monde entier");
+//     nearbySessions = await UserSession.find({
+//       isActive: true,
+//       userId: { $ne: req.user._id },
+//       lastUpdated: { $gte: oneHourAgo }
+//     })
+//     .populate('userId', 'username profilePicture interests privacySettings')
+//     .limit(TARGET_USER_COUNT);
+//     
+//     currentLevel = 0;
+//   }
+// 
+//   // ==================== CONFIGURATION DES NIVEAUX ====================
+//   
+//   // Configuration technique (basée sur geohash)
+//   const levelConfig = {
+//     7: { text: "dans votre rue", icon: "🚶", name: "Rue" },
+//     6: { text: "dans votre quartier", icon: "🏘️", name: "Quartier" },
+//     5: { text: "à proximité", icon: "🚲", name: "Proximité" },
+//     4: { text: "dans votre ville", icon: "🏙️", name: "Ville" },
+//     3: { text: "dans votre région", icon: "🗺️", name: "Région" },
+//     2: { text: "dans votre pays", icon: "🌍", name: "Pays" },
+//     1: { text: "sur votre continent", icon: "🌎", name: "Continent" },
+//     0: { text: "dans le monde", icon: "🌏", name: "Monde" }
+//   };
+// 
+//   /**
+//    * Fonction qui retourne le NOM RÉEL du lieu basé sur la distance et les coordonnées
+//    * @param {number} distance - Distance en mètres
+//    * @param {Object} session - Session de l'utilisateur
+//    * @returns {Promise<Object>} Texte et icône à afficher
+//    */
+//   const getPlaceDisplay = async (distance, session) => {
+//     // 1. Définir l'icône selon la distance
+//     let icon = "📍";
+//     if (distance < 50) icon = "📍";           // Quelques mètres
+//     else if (distance < 100) icon = "📍";      // Très proche
+//     else if (distance < 500) icon = "🚶";      // Rue
+//     else if (distance < 1000) icon = "👣";     // 10 min à pied
+//     else if (distance < 3000) icon = "🏘️";     // Quartier
+//     else if (distance < 10000) icon = "🏙️";    // Ville
+//     else if (distance < 50000) icon = "🗺️";    // Région
+//     else if (distance < 500000) icon = "🌍";    // Pays
+//     else icon = "🌏";                           // Monde
+// 
+//     // 2. Essayer d'obtenir le nom du lieu réel via le géocodage
+//     let placeName = "";
+//     
+//     if (session.lat && session.lon) {
+//       try {
+//         const locationDetails = await geocodingService.reverseGeocode(
+//           session.lat,
+//           session.lon,
+//           session.lastKnownGeohash?.length || 7
+//         );
+//         
+//         // Stratégie de nommage intelligente selon la distance
+//         if (distance < 500 && locationDetails.address.road) {
+//           // Très proche → nom de la rue
+//           placeName = locationDetails.address.road;
+//         } else if (distance < 3000 && locationDetails.address.neighbourhood) {
+//           // Quartier → nom du quartier
+//           placeName = locationDetails.address.neighbourhood;
+//         } else if (distance < 10000 && locationDetails.address.city) {
+//           // Ville → nom de la ville
+//           placeName = locationDetails.address.city;
+//         } else if (distance < 50000 && locationDetails.address.state) {
+//           // Région → nom de la région
+//           placeName = locationDetails.address.state;
+//         } else if (locationDetails.address.country) {
+//           // Pays → nom du pays
+//           placeName = locationDetails.address.country;
+//         }
+//         
+//         // Si on n'a toujours rien, utiliser le shortName du service
+//         if (!placeName) {
+//           placeName = locationDetails.shortName;
+//         }
+//         
+//       } catch (error) {
+//         console.log(`⚠️ Erreur géocodage: ${error.message}`);
+//       }
+//     }
+//     
+//     // 3. Fallback: texte générique basé sur la distance
+//     if (!placeName) {
+//       if (distance < 50) placeName = "Quelques mètres";
+//       else if (distance < 100) placeName = "Très proche";
+//       else if (distance < 500) placeName = "Dans votre rue";
+//       else if (distance < 1000) placeName = "10 min à pied";
+//       else if (distance < 3000) placeName = "Dans votre quartier";
+//       else if (distance < 10000) placeName = "Dans votre ville";
+//       else if (distance < 50000) placeName = "Dans votre région";
+//       else if (distance < 500000) placeName = "Dans votre pays";
+//       else placeName = "Dans le monde";
+//     }
+//     
+//     return {
+//       text: placeName,
+//       icon: icon
+//     };
+//   };
+// 
+//   // ==================== MAPPING DES UTILISATEURS ====================
+//   
+//   const nearbyUsers = await Promise.all(nearbySessions.map(async session => {
+//     const user = session.userId;
+//     
+//     // Vérifier la cohérence du geohash
+//     if (session.lat && session.lon) {
+//       const expectedGeohash = geohash.encode(session.lat, session.lon, precision);
+//       if (session.lastKnownGeohash !== expectedGeohash) {
+//         console.log(`⚠️ Incohérence détectée pour user ${user._id}`);
+//         session.lastKnownGeohash = expectedGeohash;
+//         await session.save();
+//       }
+//     }
+//     
+//     // Calculs de distance et direction
+//     const distanceInMeters = calculateDistance(
+//       userLat, userLon, 
+//       session.lat, session.lon
+//     );
+//     
+//     const bearing = calculateBearing(
+//       userLat, userLon, 
+//       session.lat, session.lon
+//     );
+//     
+//     // Centres d'intérêt communs
+//     const commonInterests = user.interests?.filter(interest =>
+//       req.user.interests?.includes(interest)
+//     ) || [];
+// 
+//     const userLevel = session.lastKnownGeohash?.length || currentLevel;
+//     
+//     // ✅ Utilisation du géocodage pour obtenir le lieu réel
+//     const placeDisplay = await getPlaceDisplay(distanceInMeters, session);
+//     const geohashPrecision = levelConfig[userLevel] || levelConfig[0];
+// 
+//     // Essayer d'obtenir des détails supplémentaires pour le debug
+//     let locationDetails = null;
+//     if (session.lat && session.lon && process.env.NODE_ENV === 'production') {
+//       try {
+//         locationDetails = await geocodingService.reverseGeocode(
+//           session.lat, session.lon, 7
+//         );
+//       } catch (e) {
+//         // Ignorer en dev
+//       }
+//     }
+// 
+//     return {
+//       _id: user._id,
+//       username: user.username,
+//       profilePicture: user.profilePicture,
+//       privacySettings: user.privacySettings,
+//       distance: Math.round(distanceInMeters),
+//       bearing: bearing,
+//       // ✅ Informations de localisation enrichies
+//       location: {
+//         // Ce qui est affiché à l'utilisateur (nom réel du lieu)
+//         display: placeDisplay.text,
+//         icon: placeDisplay.icon,
+//         // Informations techniques (optionnel)
+//         geohash: session.lastKnownGeohash,
+//         level: {
+//           value: userLevel,
+//           name: geohashPrecision.name
+//         },
+//         // Détails complets (pour debug uniquement)
+//         ...(locationDetails && { details: locationDetails.address })
+//       },
+//       // Centres d'intérêt
+//       interests: {
+//         common: commonInterests,
+//         count: commonInterests.length,
+//         list: commonInterests.slice(0, 3) // Top 3 pour l'affichage
+//       },
+//       // Métadonnées de session
+//       toSessionId: session.sessionId,
+//       lastActive: session.lastUpdated,
+//       isOnline: (Date.now() - new Date(session.lastUpdated).getTime()) < 5 * 60 * 1000 // 5 minutes
+//     };
+//   }));
+// 
+//   // ==================== TRAITEMENT FINAL ====================
+//   
+//   // Trier par distance
+//   nearbyUsers.sort((a, b) => a.distance - b.distance);
+// 
+//   // Statistiques enrichies
+//   const stats = {
+//     byLevel: {},
+//     byCountry: {},
+//     totalDistance: nearbyUsers.reduce((acc, u) => acc + u.distance, 0),
+//     averageDistance: Math.round(nearbyUsers.reduce((acc, u) => acc + u.distance, 0) / nearbyUsers.length) || 0,
+//     online: nearbyUsers.filter(u => u.isOnline).length
+//   };
+//   
+//   nearbyUsers.forEach(u => {
+//     // Stats par niveau
+//     const level = u.location.level.value;
+//     stats.byLevel[level] = (stats.byLevel[level] || 0) + 1;
+//     
+//     // Stats par pays (si disponibles)
+//     if (u.location.details?.country) {
+//       const country = u.location.details.country;
+//       stats.byCountry[country] = (stats.byCountry[country] || 0) + 1;
+//     }
+//   });
+// 
+//   // Nom du niveau de recherche
+//   const getSearchLevelName = (level) => {
+//     if (level === 7) return "Recherche rue";
+//     if (level === 6) return "Recherche quartier";
+//     if (level === 5) return "Recherche proximité";
+//     if (level === 4) return "Recherche ville";
+//     if (level === 3) return "Recherche région";
+//     if (level === 2) return "Recherche pays";
+//     if (level === 1) return "Recherche continent";
+//     return "Recherche monde";
+//   };
+// 
+//   // ==================== RÉPONSE FINALE ====================
+//   
+//   res.status(200).json({
+//     success: true,
+//     data: {
+//       users: nearbyUsers,
+//       currentSessionId: userSession.sessionId,
+//       search: {
+//         level: currentLevel,
+//         name: getSearchLevelName(currentLevel),
+//         radius: currentLevel === 7 ? "précis (rue)" :
+//                 currentLevel === 6 ? "quartier" :
+//                 currentLevel === 5 ? "proximité" :
+//                 currentLevel === 4 ? "ville" :
+//                 currentLevel === 3 ? "région" :
+//                 currentLevel === 2 ? "pays" :
+//                 currentLevel === 1 ? "continent" : "monde"
+//       },
+//       totals: {
+//         found: nearbyUsers.length,
+//         target: TARGET_USER_COUNT,
+//         online: stats.online
+//       },
+//       stats: {
+//         byLevel: stats.byLevel,
+//         averageDistance: stats.averageDistance,
+//         totalDistance: stats.totalDistance
+//       },
+//       debug: process.env.NODE_ENV === 'production' ? {
+//         userPosition: { lat: userLat, lon: userLon },
+//         userGeohash: currentGeohash,
+//         finalSearchPrefix: finalPrefix,
+//         cacheStats: geocodingService.getCacheStats(),
+//         timestamp: new Date()
+//       } : undefined
+//     }
+//   });
+// });
+
 const getNearbyUsers = asyncHandler(async (req, res) => {
   const { latitude, longitude } = req.query;
   
@@ -1516,9 +1850,8 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
     currentLevel = 0;
   }
 
-  // ==================== CONFIGURATION DES NIVEAUX ====================
+  // ==================== CONFIGURATION ====================
   
-  // Configuration technique (basée sur geohash)
   const levelConfig = {
     7: { text: "dans votre rue", icon: "🚶", name: "Rue" },
     6: { text: "dans votre quartier", icon: "🏘️", name: "Quartier" },
@@ -1530,81 +1863,81 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
     0: { text: "dans le monde", icon: "🌏", name: "Monde" }
   };
 
-  /**
-   * Fonction qui retourne le NOM RÉEL du lieu basé sur la distance et les coordonnées
-   * @param {number} distance - Distance en mètres
-   * @param {Object} session - Session de l'utilisateur
-   * @returns {Promise<Object>} Texte et icône à afficher
-   */
-  const getPlaceDisplay = async (distance, session) => {
-    // 1. Définir l'icône selon la distance
-    let icon = "📍";
-    if (distance < 50) icon = "📍";           // Quelques mètres
-    else if (distance < 100) icon = "📍";      // Très proche
-    else if (distance < 500) icon = "🚶";      // Rue
-    else if (distance < 1000) icon = "👣";     // 10 min à pied
-    else if (distance < 3000) icon = "🏘️";     // Quartier
-    else if (distance < 10000) icon = "🏙️";    // Ville
-    else if (distance < 50000) icon = "🗺️";    // Région
-    else if (distance < 500000) icon = "🌍";    // Pays
-    else icon = "🌏";                           // Monde
+  // ✅ NOUVELLE FONCTION : Obtient le NOM EXACT du lieu via géocodage
+  const getExactPlaceName = async (session, distance) => {
+    if (!session.lat || !session.lon) {
+      return { text: "Position inconnue", icon: "📍" };
+    }
 
-    // 2. Essayer d'obtenir le nom du lieu réel via le géocodage
-    let placeName = "";
-    
-    if (session.lat && session.lon) {
-      try {
-        const locationDetails = await geocodingService.reverseGeocode(
-          session.lat,
-          session.lon,
-          session.lastKnownGeohash?.length || 7
-        );
-        
-        // Stratégie de nommage intelligente selon la distance
-        if (distance < 500 && locationDetails.address.road) {
-          // Très proche → nom de la rue
-          placeName = locationDetails.address.road;
-        } else if (distance < 3000 && locationDetails.address.neighbourhood) {
-          // Quartier → nom du quartier
-          placeName = locationDetails.address.neighbourhood;
-        } else if (distance < 10000 && locationDetails.address.city) {
-          // Ville → nom de la ville
-          placeName = locationDetails.address.city;
-        } else if (distance < 50000 && locationDetails.address.state) {
-          // Région → nom de la région
-          placeName = locationDetails.address.state;
-        } else if (locationDetails.address.country) {
-          // Pays → nom du pays
-          placeName = locationDetails.address.country;
-        }
-        
-        // Si on n'a toujours rien, utiliser le shortName du service
-        if (!placeName) {
-          placeName = locationDetails.shortName;
-        }
-        
-      } catch (error) {
-        console.log(`⚠️ Erreur géocodage: ${error.message}`);
+    try {
+      // Appel au service de géocodage (avec cache)
+      const locationDetails = await geocodingService.reverseGeocode(
+        session.lat,
+        session.lon,
+        session.lastKnownGeohash?.length || 7
+      );
+
+      // Définir l'icône en fonction de la distance
+      let icon = "📍";
+      if (distance < 500) icon = "🚶";
+      else if (distance < 3000) icon = "🏘️";
+      else if (distance < 10000) icon = "🏙️";
+      else if (distance < 50000) icon = "🗺️";
+      else if (distance < 500000) icon = "🌍";
+      else icon = "🌏";
+
+      // ✅ STRATÉGIE DE NOMMAGE : Toujours le nom le plus précis disponible
+      let displayText = "";
+
+      // Priorité 1: Nom de la rue (si très proche ou disponible)
+      if (locationDetails.address.road) {
+        displayText = locationDetails.address.road;
       }
+      // Priorité 2: Nom du quartier
+      else if (locationDetails.address.neighbourhood || locationDetails.address.suburb) {
+        displayText = locationDetails.address.neighbourhood || locationDetails.address.suburb;
+      }
+      // Priorité 3: Nom de la ville
+      else if (locationDetails.address.city || locationDetails.address.town || locationDetails.address.village) {
+        displayText = locationDetails.address.city || locationDetails.address.town || locationDetails.address.village;
+      }
+      // Priorité 4: Nom de la région
+      else if (locationDetails.address.state) {
+        displayText = locationDetails.address.state;
+      }
+      // Priorité 5: Nom du pays
+      else if (locationDetails.address.country) {
+        displayText = locationDetails.address.country;
+      }
+      // Priorité 6: Court nom par défaut
+      else {
+        displayText = locationDetails.shortName || "Lieu inconnu";
+      }
+
+      return {
+        text: displayText, // ✅ Le NOM EXACT du lieu !
+        icon: icon,
+        details: locationDetails.address // Pour debug
+      };
+
+    } catch (error) {
+      console.error("❌ Erreur géocodage:", error.message);
+      
+      // Fallback: texte basé sur la distance
+      let fallbackText = "";
+      if (distance < 500) fallbackText = "Dans votre rue";
+      else if (distance < 3000) fallbackText = "Dans votre quartier";
+      else if (distance < 10000) fallbackText = "Dans votre ville";
+      else if (distance < 50000) fallbackText = "Dans votre région";
+      else if (distance < 500000) fallbackText = "Dans votre pays";
+      else fallbackText = "Dans le monde";
+
+      return {
+        text: fallbackText,
+        icon: "📍",
+        fallback: true
+      };
     }
-    
-    // 3. Fallback: texte générique basé sur la distance
-    if (!placeName) {
-      if (distance < 50) placeName = "Quelques mètres";
-      else if (distance < 100) placeName = "Très proche";
-      else if (distance < 500) placeName = "Dans votre rue";
-      else if (distance < 1000) placeName = "10 min à pied";
-      else if (distance < 3000) placeName = "Dans votre quartier";
-      else if (distance < 10000) placeName = "Dans votre ville";
-      else if (distance < 50000) placeName = "Dans votre région";
-      else if (distance < 500000) placeName = "Dans votre pays";
-      else placeName = "Dans le monde";
-    }
-    
-    return {
-      text: placeName,
-      icon: icon
-    };
   };
 
   // ==================== MAPPING DES UTILISATEURS ====================
@@ -1622,7 +1955,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
       }
     }
     
-    // Calculs de distance et direction
+    // Calculs de distance
     const distanceInMeters = calculateDistance(
       userLat, userLon, 
       session.lat, session.lon
@@ -1633,28 +1966,15 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
       session.lat, session.lon
     );
     
-    // Centres d'intérêt communs
     const commonInterests = user.interests?.filter(interest =>
       req.user.interests?.includes(interest)
     ) || [];
 
     const userLevel = session.lastKnownGeohash?.length || currentLevel;
     
-    // ✅ Utilisation du géocodage pour obtenir le lieu réel
-    const placeDisplay = await getPlaceDisplay(distanceInMeters, session);
+    // ✅ Utilisation du géocodage pour obtenir le NOM EXACT du lieu
+    const placeInfo = await getExactPlaceName(session, distanceInMeters);
     const geohashPrecision = levelConfig[userLevel] || levelConfig[0];
-
-    // Essayer d'obtenir des détails supplémentaires pour le debug
-    let locationDetails = null;
-    if (session.lat && session.lon && process.env.NODE_ENV === 'production') {
-      try {
-        locationDetails = await geocodingService.reverseGeocode(
-          session.lat, session.lon, 7
-        );
-      } catch (e) {
-        // Ignorer en dev
-      }
-    }
 
     return {
       _id: user._id,
@@ -1663,60 +1983,43 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
       privacySettings: user.privacySettings,
       distance: Math.round(distanceInMeters),
       bearing: bearing,
-      // ✅ Informations de localisation enrichies
+      // ✅ Informations de localisation avec le NOM RÉEL
       location: {
-        // Ce qui est affiché à l'utilisateur (nom réel du lieu)
-        display: placeDisplay.text,
-        icon: placeDisplay.icon,
-        // Informations techniques (optionnel)
+        display: placeInfo.text,  // "Rue de Rivoli" ou "Paris" ou "France"
+        icon: placeInfo.icon,
         geohash: session.lastKnownGeohash,
         level: {
           value: userLevel,
           name: geohashPrecision.name
-        },
-        // Détails complets (pour debug uniquement)
-        ...(locationDetails && { details: locationDetails.address })
+        }
       },
-      // Centres d'intérêt
       interests: {
         common: commonInterests,
-        count: commonInterests.length,
-        list: commonInterests.slice(0, 3) // Top 3 pour l'affichage
+        count: commonInterests.length
       },
-      // Métadonnées de session
       toSessionId: session.sessionId,
       lastActive: session.lastUpdated,
-      isOnline: (Date.now() - new Date(session.lastUpdated).getTime()) < 5 * 60 * 1000 // 5 minutes
+      isOnline: (Date.now() - new Date(session.lastUpdated).getTime()) < 5 * 60 * 1000
     };
   }));
 
-  // ==================== TRAITEMENT FINAL ====================
+  // ==================== TRI ET STATISTIQUES ====================
   
-  // Trier par distance
   nearbyUsers.sort((a, b) => a.distance - b.distance);
 
-  // Statistiques enrichies
+  // Statistiques
   const stats = {
     byLevel: {},
-    byCountry: {},
     totalDistance: nearbyUsers.reduce((acc, u) => acc + u.distance, 0),
     averageDistance: Math.round(nearbyUsers.reduce((acc, u) => acc + u.distance, 0) / nearbyUsers.length) || 0,
     online: nearbyUsers.filter(u => u.isOnline).length
   };
   
   nearbyUsers.forEach(u => {
-    // Stats par niveau
     const level = u.location.level.value;
     stats.byLevel[level] = (stats.byLevel[level] || 0) + 1;
-    
-    // Stats par pays (si disponibles)
-    if (u.location.details?.country) {
-      const country = u.location.details.country;
-      stats.byCountry[country] = (stats.byCountry[country] || 0) + 1;
-    }
   });
 
-  // Nom du niveau de recherche
   const getSearchLevelName = (level) => {
     if (level === 7) return "Recherche rue";
     if (level === 6) return "Recherche quartier";
@@ -1728,7 +2031,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
     return "Recherche monde";
   };
 
-  // ==================== RÉPONSE FINALE ====================
+  // ==================== RÉPONSE ====================
   
   res.status(200).json({
     success: true,
@@ -1737,14 +2040,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
       currentSessionId: userSession.sessionId,
       search: {
         level: currentLevel,
-        name: getSearchLevelName(currentLevel),
-        radius: currentLevel === 7 ? "précis (rue)" :
-                currentLevel === 6 ? "quartier" :
-                currentLevel === 5 ? "proximité" :
-                currentLevel === 4 ? "ville" :
-                currentLevel === 3 ? "région" :
-                currentLevel === 2 ? "pays" :
-                currentLevel === 1 ? "continent" : "monde"
+        name: getSearchLevelName(currentLevel)
       },
       totals: {
         found: nearbyUsers.length,
@@ -1753,21 +2049,15 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
       },
       stats: {
         byLevel: stats.byLevel,
-        averageDistance: stats.averageDistance,
-        totalDistance: stats.totalDistance
+        averageDistance: stats.averageDistance
       },
-      debug: process.env.NODE_ENV === 'production' ? {
+      debug: process.env.NODE_ENV === 'development' ? {
         userPosition: { lat: userLat, lon: userLon },
-        userGeohash: currentGeohash,
-        finalSearchPrefix: finalPrefix,
-        cacheStats: geocodingService.getCacheStats(),
-        timestamp: new Date()
+        cacheStats: geocodingService.getCacheStats()
       } : undefined
     }
   });
 });
-
-
 function calculateBearing(lat1, lon1, lat2, lon2) {
   const toRad = (deg) => deg * (Math.PI / 180);
   const toDeg = (rad) => rad * (180 / Math.PI);

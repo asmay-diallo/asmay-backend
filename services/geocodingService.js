@@ -161,7 +161,7 @@ class GeocodingService {
    */
   _parseResponse(data, lat, lon, precision) {
     const address = data.address || {};
-    
+    0
     // Déterminer le niveau de précision basé sur les données disponibles
     let level = 1;
     if (address.road) level = 7;
