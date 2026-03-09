@@ -2018,9 +2018,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
   
   nearbyUsers.forEach(u => {
     const level = u.precision.level;
-    stats.byLevel[level] = (stats.byLevel[level] || 0) + 1;+
-    01
-    wg 
+    stats.byLevel[level] = (stats.byLevel[level] || 0) + 1; 
   });
 
   const getSearchLevelName = (level) => {
