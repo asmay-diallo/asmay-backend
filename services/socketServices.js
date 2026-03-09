@@ -619,6 +619,7 @@ class SocketService {
           targetUserId,
           signalId: result.signal._id,
           chatId: result.signal.chatId,
+          message:result.signalData.message,
           delivered: result.delivered,
           timestamp: new Date(),
         });
@@ -739,7 +740,7 @@ class SocketService {
       toUserId,
       fromUserSessionId: `session_${fromUserId}`,
       toUserSessionId: `session_${toUserId}`,
-      message: message || `Salut ${toUser.username} !`,
+      message:`Salut ${toUser.username} 👋 ! Je suis ${fromUser.username}, J'aimerais vous faire connaitre si pouvez accepter mon signal ?`,
       chatId,
       status: "pending",
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -789,6 +790,79 @@ class SocketService {
     }
   }
 
+  // 📨 Envoyer notification de signal (CORRIGÉ)
+  sendSignalNotification(io, targetUserId, signalData) {
+    console.log(`📨 Envoi notification à ${targetUserId}`, signalData);
+
+    const targetSocketId = this.userConnections.get(targetUserId.toString());
+
+    if (targetSocketId && io) {
+      
+      io.to(`user_${targetUserId}`).emit("new_signal", {
+        _id: signalData._id,
+        fromUser: signalData.fromUser,
+        toUser: targetUserId,
+        message: signalData.message,
+        commonInterests: signalData.commonInterests,
+        status: "pending",
+        createdAt: signalData.createdAt,
+        expiresAt: signalData.expiresAt,
+        // viewed: false
+      });
+
+      console.log(`✅ Notification envoyée à ${targetUserId}`);
+      return true;
+    } else {
+      console.log(`💤 User ${targetUserId} non connecté`);
+      return false;
+    }
+  }
+
+  // ✅ Notifier acceptation (inchangé)
+  notifySignalAccepted(io, fromUserId, acceptedByUser, chatId) {
+    const fromUserSocketId = this.userConnections.get(fromUserId.toString());
+
+    if (fromUserSocketId && io) {
+      io.to(`user_${fromUserId}`).emit("signal_accepted", {
+        acceptedBy: {
+          _id: acceptedByUser._id,
+          username: acceptedByUser.username,
+          profilePicture: acceptedByUser.profilePicture,
+        },
+        chatId: chatId,
+        acceptedAt: new Date(),
+      });
+
+      console.log(
+        `✅ ${acceptedByUser.username} a accepté le signal de ${fromUserId}`
+      );
+      return true;
+    }
+
+    return false;
+  }
+  notifySignalDeclined(io, fromUserId, declinedByUser, chatId) {
+    const fromUserSocketId = this.userConnections.get(fromUserId.toString());
+
+    if (fromUserSocketId && io) {
+      io.to(`user_${fromUserId}`).emit("signal_declined", {
+        declinedBy: {
+          _id: declinedByUser._id,
+          username: declinedByUser.username,
+          profilePicture: declinedByUser.profilePicture,
+        },
+        chatId: chatId,
+        acceptedAt: new Date(),
+      });
+
+      console.log(
+        `✅ ${declinedByUser.username} a refusé le signal de ${fromUserId}`
+      );
+      return true;
+    }
+
+    return false;
+  }
   /**
    * Vérifie si un utilisateur est en ligne
    */
