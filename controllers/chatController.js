@@ -20,7 +20,7 @@ const getUserChats = async (req, res) => {
       .populate("participant2", "username profilePicture interests")
       .sort({ lastActivity: -1 });
 
-    // 🔥 CORRECTION : Formater la réponse pour correspondre au frontend
+    //  Formater la réponse pour correspondre au frontend
     const formattedChats = chats.map((chat) => ({
       _id: chat._id,
       participant1: chat.participant1,
@@ -28,7 +28,6 @@ const getUserChats = async (req, res) => {
       lastActivity: chat.lastActivity,
       expiresAt: chat.expiresAt,
       isActive: chat.isActive,
-      // 🔥 AJOUT : Dernier message pour l'aperçu
       lastMessage: chat.lastMessage || "Démarrer la conversation",
     }));
 
@@ -70,7 +69,7 @@ const sendMessage = async (req, res) => {
 
     // 2. Créer le message
     const message = await Message.create({
-      chat: chatId, // 🔥 CORRECTION : Utiliser 'chat' au lieu de 'chatId'
+      chatId: chatId, 
       sender: senderId,
       content,
     });
@@ -80,11 +79,11 @@ const sendMessage = async (req, res) => {
 
     // 4. Mettre à jour la dernière activité du chat
     chat.lastActivity = new Date();
-    chat.lastMessage = content; // 🔥 AJOUT : Sauvegarder le dernier message
+    chat.lastMessage = content
     chat.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await chat.save();
 
-    // 5. 🔥 Émettre l'événement socket
+    // 5.  Émettre l'événement socket
     const io = req.app.get("io");
     if (io) {  
       // Formater les données pour le frontend
@@ -151,11 +150,11 @@ const getChatMessages = async (req, res) => {
       });
     }
 
-    const messages = await Message.find({ chat: chatId })
+    const messages = await Message.find({ chatId: chatId })
       .populate("sender", "username profilePicture")
       .sort({ createdAt: 1 });
 
-    // 🔥 CORRECTION : Formater pour le frontend
+    // Formater pour le frontend
     const formattedMessages = messages.map((msg) => ({
       _id: msg._id,
       sender: {
@@ -234,7 +233,6 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
       tempId: req.body.tempId || null,
     };
 
-    console.log('📝 Données message:', messageData);
 
     let message;
     try {
