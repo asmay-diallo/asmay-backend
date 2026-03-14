@@ -3,7 +3,7 @@ const {
      register, 
      login,
     logout,
-    sendVerificationCode, 
+    sendVerificationCode,verifyCode, 
    resendCode } = require("../controllers/authController");
 const express = require("express");
 
