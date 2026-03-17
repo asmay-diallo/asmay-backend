@@ -163,6 +163,9 @@ const getChatMessages = async (req, res) => {
         profilePicture: msg.sender.profilePicture,
       },
       content: msg.content,
+      audioUrl: msg.audioUrl || null,  
+      duration: msg.duration || 0,      
+      type: msg.type || (msg.audioUrl ? 'audio' : 'text'),
       chat: chatId,
       createdAt: msg.createdAt,
     }));
