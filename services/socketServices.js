@@ -682,7 +682,7 @@ class SocketService {
             profilePicture: message.sender.profilePicture,
           },
           content: message.content,
-          chat: chatId,
+          chatId: chatId,
           createdAt: message.createdAt,
         });
 
