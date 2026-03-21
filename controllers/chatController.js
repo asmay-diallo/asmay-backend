@@ -95,7 +95,7 @@ const sendMessage = async (req, res) => {
           profilePicture: message.sender.profilePicture,
         },
         content: message.content,
-        chat: chatId,
+        chatId: chatId,
         createdAt: message.createdAt,
       };
 
@@ -227,9 +227,9 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
     // 4. Créer le message AVEC LE BON CHAMP
     console.log('\n💾 Création du message...');
     const messageData = {
-      chatId: req.params.chatId,  // IMPORTANT: chatId pas chat
+      chatId: req.params.chatId,
       sender: req.user.id,
-      content: '', // Vide pour les messages vocaux
+      content: '',
       audioUrl: audioUrl,
       duration: parseInt(req.body.duration) || 0,
       type: 'audio',
@@ -272,7 +272,7 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
       audioUrl: audioUrl,
       audioFullUrl: audioFullUrl,
       duration: message.duration,
-      chat: req.params.chatId,
+      chatId: req.params.chatId,
       type: 'audio',
       createdAt: message.createdAt,
       tempId: req.body.tempId
