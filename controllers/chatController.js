@@ -166,7 +166,7 @@ const getChatMessages = async (req, res) => {
       audioUrl: msg.audioUrl || null,  
       duration: msg.duration || 0,      
       type: msg.type || (msg.audioUrl ? 'audio' : 'text'),
-      chat: chatId,
+      chatId: chatId,
       createdAt: msg.createdAt,
     }));
 
