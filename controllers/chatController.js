@@ -107,11 +107,23 @@ const sendMessage = async (req, res) => {
         chat.participant1.toString() === senderId.toString()
           ? chat.participant2
           : chat.participant1;
-
-      io.to(`user_${otherParticipantId}`).emit("chat_updated", {
+  //  Émettre la mise à jour du chat pour l'expéditeur
+      io.to(`user_${senderId}`).emit("chat_updated", {
         _id: chat._id,
         lastActivity: chat.lastActivity,
-        lastMessage: chat.lastMessage,
+        lastMessage: content,
+        senderId: senderId,
+        unreadCount: 0 // Pour l'expéditeur
+      });
+      console.log(`📨 chat_updated émis à expéditeur ${senderId}`);
+
+      //  Émettre la mise à jour du chat pour le destinataire
+      io.to(`user_${otherParticipantId._id}`).emit("chat_updated", {
+        _id: chat._id,
+        lastActivity: chat.lastActivity,
+        lastMessage: content,
+        senderId: senderId,
+        unreadCount: 1 //  IMPORTANT: Pour le destinataire
       });
     }
 
@@ -283,7 +295,25 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
     if (io) {
       console.log('\n📡 Émission socket...');
       io.to(`chat_${req.params.chatId}`).emit('new_voice_message', responseData);
-      console.log('✅ Socket émis');
+   io.to(`user_${senderId}`).emit("chat_updated", {
+        _id: chat._id,
+        lastActivity: chat.lastActivity,
+        lastMessage: "🎤 Message vocal",
+        senderId: senderId,
+        unreadCount: 0
+      });
+      console.log(`📨 chat_updated émis à expéditeur ${senderId}`);
+
+      // 🔥 Émettre la mise à jour du chat pour le destinataire
+      io.to(`user_${otherParticipantId._id}`).emit("chat_updated", {
+        _id: chat._id,
+        lastActivity: chat.lastActivity,
+        lastMessage: "🎤 Message vocal",
+        senderId: senderId,
+        unreadCount: 1
+      });
+
+
     }
 
     // 9. Réponse HTTP
