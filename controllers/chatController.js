@@ -296,6 +296,11 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
     if (io) {
       console.log('\n📡 Émission socket...');
       io.to(`chat_${req.params.chatId}`).emit('new_voice_message', responseData);
+       // Émettre une mise à jour de la liste des chats
+      const otherParticipantId =
+        chat.participant1.toString() === senderId.toString()
+          ? chat.participant2
+          : chat.participant1;
    io.to(`user_${senderId}`).emit("chat_updated", {
         _id: chat._id,
         lastActivity: chat.lastActivity,
