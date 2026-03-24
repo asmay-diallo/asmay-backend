@@ -197,6 +197,7 @@ const getChatMessages = async (req, res) => {
 
 const sendVoiceMessage = asyncHandler(async (req, res) => {
   try {
+     const senderId = req.user._id;
     console.log('\n=== 🎤 DÉBUT sendVoiceMessage ===');
     console.log('📥 Données reçues:');
     console.log('- Chat ID:', req.params.chatId);
