@@ -47,7 +47,7 @@ const signalSchema = new mongoose.Schema({
   },
   expiresAt: {
     type: Date,
-    default: () => new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
+    default: () => new Date(Date.now() + 72 * 60 * 60 * 1000), // 24h
     index: { expireAfterSeconds: 0 }
   },
 

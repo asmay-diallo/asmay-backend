@@ -42,7 +42,13 @@ const messageSchema = new mongoose.Schema(
   },
     content: { type: String, maxlength: 500 }, // Limite de caractères
     read: { type: Boolean, default: false },
+    expiresAt: {
+    type: Date,
+    default: () => new Date(Date.now() + 48 * 60 * 60 * 1000), // 48h
+    index: { expireAfterSeconds: 0 }
   },
+  },
+
   {
     timestamps: true,
   }

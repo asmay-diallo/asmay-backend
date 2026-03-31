@@ -727,7 +727,7 @@ const respondToSignal = async (req, res) => {
 
         return res.status(400).json({
           success: false,
-          message: `Il y a déjà un CHAT entre ${signal.toUserId.username} et ${signal.fromUserId.username} . Rendez-vous dans CHAT !`,
+          message: `Il y a déjà un CHAT entre ${signal.toUserId.username} et ${signal.fromUserId.username} . Rendez-vous dans CHATS !`,
           // data: {
           //   chatId: existingChat._id,
           //   chatExists: true,
@@ -757,7 +757,7 @@ const respondToSignal = async (req, res) => {
           throw new Error("ObjectId invalide pour les participants");
         }
 
-        // 🔥 CRÉATION DU NOUVEAU CHAT
+        //  CRÉATION DU NOUVEAU CHAT
         const chatData = {
           participant1: signal.fromUserId._id,
           participant2: signal.toUserId._id,
@@ -765,7 +765,7 @@ const respondToSignal = async (req, res) => {
           lastActivity: new Date(),
           lastMessage: "Conversation démarrée",
           isActive: true,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 jours
+          expiresAt: new Date(Date.now() +48 * 60 * 60 * 1000), // 48h
         };
 
         console.log("📦 [CHAT] Données de création:", chatData);

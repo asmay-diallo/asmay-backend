@@ -60,7 +60,9 @@ const {
   getUserChats, 
   sendMessage, 
   getChatMessages, 
-  sendVoiceMessage 
+  sendVoiceMessage ,
+  deleteOneChat,
+  deleteYourMessage
 } = require('../controllers/chatController');
 
 const router = express.Router();
@@ -127,5 +129,7 @@ router.get('/', protect, getUserChats);
 router.get('/:chatId/messages', protect, getChatMessages);
 router.post('/:chatId/messages', protect, sendMessage);
 router.post('/:chatId/voice', protect, upload.single('audio'), sendVoiceMessage);
+router.delete('/delete/:chatId',protect,deleteOneChat)
+router.delete('/:chatId/messages/delete/:messsageId')
 
 module.exports = router;

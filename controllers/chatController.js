@@ -143,7 +143,7 @@ const sendMessage = async (req, res) => {
 // @desc    Récupérer les messages d'un chat
 // @route   GET /api/chats/:chatId/messages
 // @access  Privé
-const getChatMessages = async (req, res) => {
+const getChatMessages =asyncHandler(async (req, res) => {
   try {
     const { chatId } = req.params;
     const userId = req.user._id;
@@ -193,7 +193,7 @@ const getChatMessages = async (req, res) => {
       message: "Erreur serveur.",
     });
   }
-};
+});
 
 const sendVoiceMessage = asyncHandler(async (req, res) => {
   try {
@@ -223,7 +223,7 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
     });
 
     if (!chat) {
-      console.log('❌ ERREUR: Chat non trouvé ou accès non autorisé');
+      console.log(' ERREUR: Chat non trouvé ou accès non autorisé');
       return res.status(404).json({
         success: false,
         message: "Chat non trouvé ou accès refusé",
@@ -310,7 +310,7 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
       });
       console.log(`📨 chat_updated émis à expéditeur ${senderId}`);
 
-      // 🔥 Émettre la mise à jour du chat pour le destinataire
+      //  Émettre la mise à jour du chat pour le destinataire
       io.to(`user_${otherParticipantId._id}`).emit("chat_updated", {
         _id: chat._id,
         lastActivity: chat.lastActivity,
@@ -333,9 +333,6 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
     console.log('\n=== ✅ FIN sendVoiceMessage avec succès ===\n');
 
   } catch (error) {
-    console.error('\n❌❌❌ ERREUR GLOBALE sendVoiceMessage ❌❌❌');
-    console.error('Message:', error.message);
-    console.error('Stack:', error.stack);
     
     res.status(500).json({
       success: false,
@@ -343,7 +340,97 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
     });
   }
 });
+// Supprimer un signal
+// @route Patch /api/chats/delete/:chatId
+const deleteOneChat = asyncHandler(async (req,res)=>{
+const {chatId} = req.params
+const userId = req.user._id
+try {
+     if (!chatId) {
+      return res.status(400).json({
+        success: false,
+        message: "ChatId ID est réquis",
+      });
+    }
+
+  // Vérifie que c'est la personne qui a accepté le signal de conversation veut supprimer le chat
+const chatToDelete = await Chat.findOne({
+  _id:chatId,
+  participant2:userId
+})
+if(!chatToDelete){
+  return  res.status(400).json({
+    success:false,
+    message:"Ce chat ne peut être supprimer que par la personne qui a accepté le signal de la conversation "
+  })
+}
+const chat = await Chat.deleteOne({_id:chatId})
+   if (!chat) {
+      return res.status(401).json({
+        success: false,
+        message: "Le chat invalide !",
+      });
+    }
+return res.status(200).json({
+  success:true,
+  message:"Chat supprimé",
+  data:chat
+})
 
 
+} catch (error) {
+  return res.status(501).json({
+    success:false,
+    message:"Chat deleting Error : " + error.message
+  })
+}
+})
+const deleteYourMessage = asyncHandler(async (req,res)=>{
+const {messageId,chatId} = req.params
+const userId = req.user._id
 
-module.exports = { getUserChats, sendMessage, getChatMessages ,sendVoiceMessage};
+try {
+if(!messageId || !chatId){
+  return res.status(401).json({
+    success:false,
+    message:"ID de message est réquis ou ce chat n'est pas valide !"
+  })
+}
+// Vérifiez que c'est votre propre message que voulez supprimer
+const messageToCheck = await Message.findOne({
+  _id:messageId,
+  chatId:chatId,
+  sender:{
+    _id:userId
+  }
+})
+if(!messageToCheck){
+  return res.status(401).json({
+    success:false,
+    message:"Vous ne pouvez supprimer que votre propre message dans ce Chat !"
+  })
+}
+  // Alors on supprime le message 
+const messageToDelete = await Message.deleteOne({_id:messageId})
+if(!messageToDelete){
+  return res.status(500).json({
+    success:false,
+    message:"ID du message est réquis !"
+  })
+}
+// Réponse principale 
+return res.status(200).json({
+  success:true,
+  message:"Message supprimé",
+  data:messageToDelete
+})
+  
+} catch (error) {
+   return res.status(501).json({
+    success:false,
+    message:"Message Deleting Error : " + error.message
+  })
+}
+})
+
+module.exports = { getUserChats, sendMessage, getChatMessages ,sendVoiceMessage,deleteOneChat,deleteYourMessage};

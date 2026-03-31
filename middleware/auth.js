@@ -15,7 +15,7 @@ const protect = async (req, res, next) => {
 
         // Verify token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        // console.log("✅ [PROTECT] Token décodé pour user:", decoded.id);
+        // console.log(" [PROTECT] Token décodé pour user:", decoded.id);
 
         // Get user from token
         req.user = await User.findById(decoded.id).select('-password');
@@ -44,8 +44,7 @@ const protect = async (req, res, next) => {
       }
     }
      else {
-      // ✅ CORRECTION: Ajout du ELSE manquant
-      console.log("❌ [PROTECT] Aucun token Bearer trouvé");
+      console.log(" [PROTECT] Aucun token Bearer trouvé");
       return res.status(401).json({
         success: false,
         message: 'Veuillez créer un compte ASMAY pour avoir accès à nos services'
@@ -53,7 +52,7 @@ const protect = async (req, res, next) => {
     }
 
   } catch (error) {
-    console.error('💥 [PROTECT] Erreur inattendue:', error);
+    console.error(' [PROTECT] Erreur inattendue:', error);
     res.status(500).json({
       success: false,
       message: 'Un problème est survenu !'

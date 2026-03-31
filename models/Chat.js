@@ -47,6 +47,11 @@ const chatSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Signal",
     },
+     expiresAt: {
+    type: Date,
+    default: () => new Date(Date.now() + 48 * 60 * 60 * 1000), // 48h
+    index: { expireAfterSeconds: 0 }
+  },
     lastActivity: { type: Date, default: Date.now },
     lastMessage: { type: String },
     isActive: { type: Boolean, default: true },
