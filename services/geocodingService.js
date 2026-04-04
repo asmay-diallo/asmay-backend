@@ -208,7 +208,7 @@ class GeocodingService {
       // Type de lieu (restaurant, école, etc.)
       type: data.type || '',
       // Pour le debug en développement
-      raw: process.env.NODE_ENV === 'development' ? data : undefined
+      raw: process.env.NODE_ENV === 'development' ? data : data
     };
   }
 

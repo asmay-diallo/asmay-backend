@@ -1829,7 +1829,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
     
     nearbySessions = await UserSession.find(query)
       .populate('userId', 'username profilePicture interests privacySettings')
-      .limit(TARGET_USER_COUNT * 2);
+      .limit(TARGET_USER_COUNT * 10);
     
     if (nearbySessions.length < TARGET_USER_COUNT) {
       currentLevel--;
@@ -1863,8 +1863,8 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
     0: { text: "dans le monde", icon: "🌏", name: "Monde" }
   };
 
-  // ✅ NOUVELLE FONCTION : Obtient le NOM EXACT du lieu via géocodage
-  const getExactPlaceName = async (session, distance) => {
+  //  Obtient le NOM EXACT du lieu via géocodage
+  const geExactPlaceName = async (session, distance) => {
     if (!session.lat || !session.lon) {
       return { text: "Position inconnue", icon: "📍" };
     }
@@ -1876,7 +1876,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
         session.lon,
         session.lastKnownGeohash?.length || 7
       );
-
+      
       // Définir l'icône en fonction de la distance
       let icon = "📍";
       if (distance < 500) icon = "🚶";
@@ -1886,7 +1886,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
       else if (distance < 500000) icon = "🌍";
       else icon = "🌏";
 
-      // ✅ STRATÉGIE DE NOMMAGE : Toujours le nom le plus précis disponible
+      //  STRATÉGIE DE NOMMAGE : Toujours le nom le plus précis disponible
       let displayText = "";
 
       // Priorité 1: Nom de la rue (si très proche ou disponible)
@@ -1913,11 +1913,20 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
       else {
         displayText = locationDetails.shortName || "Lieu inconnu";
       }
+    const address = locationDetails.address
+    const displayName = locationDetails.displayName
+    const type = locationDetails.type
+    const shortName = locationDetails.shortName
 
       return {
-        text: displayText, // ✅ Le NOM EXACT du lieu !
+        text: displayText,
         icon: icon,
-        details: locationDetails.address // Pour debug
+        details:{
+           address:address,
+           displayName:displayName,
+           shortName:shortName,
+           type:type
+        }
       };
 
     } catch (error) {
@@ -1972,7 +1981,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
 
     const userLevel = session.lastKnownGeohash?.length || currentLevel;
     
-    // ✅ Utilisation du géocodage pour obtenir le NOM EXACT du lieu
+    // Utilisation du géocodage pour obtenir le NOM EXACT du lieu
     const placeInfo = await getExactPlaceName(session, distanceInMeters);
     const geohashPrecision = levelConfig[userLevel] || levelConfig[0];
 
@@ -1983,16 +1992,14 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
       privacySettings: user.privacySettings,
       distance: Math.round(distanceInMeters),
       bearing: bearing,
-      // ✅ Informations de localisation avec le NOM RÉEL
       precision: {
-        text: placeInfo.text,  // "Rue de Rivoli" ou "Paris" ou "France"
+        text: placeInfo.text,
         icon: placeInfo.icon,
+        type:placeInfo.details.type,
+        fullName:placeInfo.details.displayName,
+        shortName:placeInfo.details.shortName,
         geohash: session.lastKnownGeohash,
         level: userLevel,
-        // {
-        //   value: userLevel,
-        //   name: geohashPrecision.name
-        // }
       },
       interests: {
         common: commonInterests,

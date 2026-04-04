@@ -80,9 +80,9 @@ class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`✅ Email de bienvenue envoyé à ${email}`);
+      console.log(` Email de bienvenue envoyé à ${email}`);
     } catch (error) {
-      console.error('❌ Erreur envoi email bienvenue:', error);
+      console.error(' Erreur envoi email bienvenue:', error);
     }
   }
 }

@@ -340,8 +340,8 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
     });
   }
 });
-// Supprimer un signal
-// @route Patch /api/chats/delete/:chatId
+// Supprimer un chat
+// @route delete /api/chats/delete/:chatId
 const deleteOneChat = asyncHandler(async (req,res)=>{
 const {chatId} = req.params
 const userId = req.user._id
@@ -352,8 +352,7 @@ try {
         message: "ChatId ID est réquis",
       });
     }
-
-  // Vérifie que c'est la personne qui a accepté le signal de conversation veut supprimer le chat
+  // Vérifie que c'est la personne qui a accepté le signal de conversation voulais supprimer le chat
 const chatToDelete = await Chat.findOne({
   _id:chatId,
   participant2:userId
@@ -364,14 +363,15 @@ if(!chatToDelete){
     message:"Ce chat ne peut être supprimer que par la personne qui a accepté le signal de la conversation "
   })
 }
+// Alors on supprime le chat avec la personne qui a  acceptée le signal
 const chat = await Chat.deleteOne({_id:chatId})
    if (!chat) {
       return res.status(401).json({
         success: false,
-        message: "Le chat invalide !",
+        message: "Ce chat n'existe pas !",
       });
     }
-return res.status(200).json({
+   return res.status(200).json({
   success:true,
   message:"Chat supprimé",
   data:chat
@@ -385,52 +385,54 @@ return res.status(200).json({
   })
 }
 })
+// Supprimer un message 
+// @route delete /api/chats/:chatId/messages/:messageId
 const deleteYourMessage = asyncHandler(async (req,res)=>{
-const {messageId,chatId} = req.params
-const userId = req.user._id
+ const {messageId,chatId} = req.params
+ const userId = req.user._id
 
-try {
-if(!messageId || !chatId){
-  return res.status(401).json({
-    success:false,
-    message:"ID de message est réquis ou ce chat n'est pas valide !"
-  })
-}
-// Vérifiez que c'est votre propre message que voulez supprimer
-const messageToCheck = await Message.findOne({
+ try {
+ if(!messageId || !chatId){
+    return res.status(401).json({
+      success:false,
+      messsage:"Ce chat n'est pas valide pour supprimer ce message !"
+    })
+  }
+ // Vérifiez que c'est votre propre message que vous vouliez supprimer sinon c'est impossible
+ const messageToCheck = await Message.findOne({
   _id:messageId,
   chatId:chatId,
   sender:{
     _id:userId
   }
-})
-if(!messageToCheck){
+ })
+ if(!messageToCheck){
   return res.status(401).json({
     success:false,
     message:"Vous ne pouvez supprimer que votre propre message dans ce Chat !"
   })
-}
+ }  
   // Alors on supprime le message 
-const messageToDelete = await Message.deleteOne({_id:messageId})
-if(!messageToDelete){
+ const messageToDelete = await Message.deleteOne({_id:messageId})
+ if(!messageToDelete){
   return res.status(500).json({
     success:false,
     message:"ID du message est réquis !"
   })
-}
-// Réponse principale 
-return res.status(200).json({
+ }
+ // Réponse principale 
+  return res.status(200).json({
   success:true,
   message:"Message supprimé",
   data:messageToDelete
-})
+ })
   
-} catch (error) {
+ } catch (error) {
    return res.status(501).json({
     success:false,
     message:"Message Deleting Error : " + error.message
   })
-}
+ }
 })
 
 module.exports = { getUserChats, sendMessage, getChatMessages ,sendVoiceMessage,deleteOneChat,deleteYourMessage};
