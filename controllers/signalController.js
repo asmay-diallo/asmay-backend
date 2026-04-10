@@ -47,7 +47,7 @@ const sendSignal = async (req, res) => {
 
     // console.log(`✅ Signal envoyé via API: ${signal._id}`);
   } catch (error) {
-    // console.error("❌ Erreur dans sendSignal (API):", error.message);
+    console.error("❌ Erreur dans sendSignal (API):", error.message);
     res.status(400).json({
       success: false,
       message: error.message,

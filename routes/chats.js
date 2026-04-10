@@ -130,6 +130,6 @@ router.get('/:chatId/messages', protect, getChatMessages);
 router.post('/:chatId/messages', protect, sendMessage);
 router.post('/:chatId/voice', protect, upload.single('audio'), sendVoiceMessage);
 router.delete('/delete/:chatId',protect,deleteOneChat)
-router.delete('/:chatId/messages/delete/:messsageId',protect,deleteYourMessage)
+router.delete('/:chatId/messages/delete/:messageId',protect,deleteYourMessage)
 
 module.exports = router;

@@ -987,7 +987,7 @@ const updateLocation = asyncHandler(async (req, res) => {
         lastUpdated: new Date(),
         $push: {
           locationHistory: {
-            oldGeohash: session?.lastKnownGeohash,
+            // oldGeohash: session?.lastKnownGeohash,
             newGeohash: currentGeohash,
             changedAt: new Date(),
             reason: 'user_update'
@@ -1864,7 +1864,7 @@ const getNearbyUsers = asyncHandler(async (req, res) => {
   };
 
   //  Obtient le NOM EXACT du lieu via géocodage
-  const geExactPlaceName = async (session, distance) => {
+  const getExactPlaceName = async (session, distance) => {
     if (!session.lat || !session.lon) {
       return { text: "Position inconnue", icon: "📍" };
     }

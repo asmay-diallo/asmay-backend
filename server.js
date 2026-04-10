@@ -253,7 +253,7 @@ const fs = require("fs");
 
 // Import des handlers Socket.io
 const SocketService = require("./services/socketServices");
-const socketAuth = require("./middleware/socketAuth"); // ✅ NOUVEAU
+const socketAuth = require("./middleware/socketAuth");
 
 const app = express();
 const server = http.createServer(app);
@@ -289,7 +289,7 @@ const io = socketIo(server, {
   maxHttpBufferSize: 1e8
 });
 
-// ✅ MIDDLEWARE D'AUTHENTIFICATION SOCKET.IO
+// MIDDLEWARE D'AUTHENTIFICATION SOCKET.IO
 io.use(socketAuth);
 
 // Middleware de sécurité
@@ -346,9 +346,9 @@ app.use("/api/chats", protect, chatRoutes);
 app.use("/api/users", protect, userRoutes);
 app.use("/api/uploads", protect, uploadRoutes);
 
-// ✅ GESTION DES CONNEXIONS SOCKET.IO (simplifiée)
+// GESTION DES CONNEXIONS SOCKET.IO (simplifiée)
 io.on('connection', (socket) => {
-  console.log(`✅ Socket connecté: ${socket.id} - User: ${socket.user.username}`);
+  console.log(` Socket connecté: ${socket.id} - User: ${socket.user.username}`);
   
   // Ajouter aux rooms
   socket.join(`user_${socket.userId}`);

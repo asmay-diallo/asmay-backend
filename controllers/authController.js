@@ -375,6 +375,8 @@ const register = async (req, res) => {
         message: "Vos données sont invalides ! Veuillez vérifier !",
         errors: messages,
       });
+      console.log("Error :",messages);
+      
     }
 
     if (error.code === 11000) {

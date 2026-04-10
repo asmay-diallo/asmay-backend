@@ -17,7 +17,7 @@ class EmailService {
     const mailOptions = {
       from: `"Asmay" <${process.env.GMAIL_USER}>`,
       to: email,
-      subject: '🔐 Code de vérification Asmay',
+      subject: '💛 Code de vérification Asmay',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
           <div style="text-align: center; margin-bottom: 20px;">
@@ -55,7 +55,7 @@ class EmailService {
     const mailOptions = {
       from: `"Asmay" <${process.env.GMAIL_USER}>`,
       to: email,
-      subject: '🎉 Bienvenue sur Asmay !',
+      subject: '💛 Bienvenue sur Asmay !',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
           <div style="text-align: center; margin-bottom: 20px;">

@@ -82,12 +82,12 @@ const sendMessage = async (req, res) => {
     chat.lastMessage = content
     chat.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await chat.save();
-
+    let messageData
     // 5.  Émettre l'événement socket
     const io = req.app.get("io");
     if (io) {  
       // Formater les données pour le frontend
-      const messageData = {
+       messageData = {
         _id: message._id,
         sender: {
           _id: message.sender._id,
@@ -215,7 +215,6 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
     }
 
     // 2. Chercher le chat avec la bonne méthode
-    console.log('\n🔍 Recherche du chat...');
     const chat = await Chat.findOne({
       _id: req.params.chatId,
       isActive: true,
@@ -230,12 +229,11 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
       });
     }
 
-    console.log('✅ Chat trouvé et utilisateur autorisé');
+    console.log(' Chat trouvé et utilisateur autorisé');
 
     // 3. URLs du fichier
     const audioUrl = `/uploads/voice_messages/${req.file.filename}`;
     const audioFullUrl = `${req.protocol}://${req.get("host")}${audioUrl}`;
-    console.log('📁 URLs:', { audioUrl, audioFullUrl });
 
     // 4. Créer le message AVEC LE BON CHAMP
     console.log('\n💾 Création du message...');
@@ -263,16 +261,13 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
     }
 
     // 5. Mettre à jour le chat
-    console.log('\n🔄 Mise à jour du chat...');
     chat.lastActivity = new Date();
     chat.lastMessage = "🎤 Message vocal";
     await chat.save();
-    console.log('✅ Chat mis à jour');
 
     // 6. Populer le message
     console.log('\n👤 Population du sender...');
     await message.populate('sender', 'username _id profilePicture');
-    console.log('✅ Sender peuplé:', message.sender.username);
 
     // 7. Formater la réponse
     const responseData = {
@@ -387,52 +382,126 @@ const chat = await Chat.deleteOne({_id:chatId})
 })
 // Supprimer un message 
 // @route delete /api/chats/:chatId/messages/:messageId
-const deleteYourMessage = asyncHandler(async (req,res)=>{
- const {messageId,chatId} = req.params
- const userId = req.user._id
+// const deleteYourMessage = asyncHandler(async (req,res)=>{
+//  const {messageId,chatId} = req.params
+//  const userId = req.user._id
+// 
+//  try {
+//  if(!messageId || !chatId){
+//   console.log("Les IDs :",req.params);
+//   
+//     return res.status(402).json({
+//       success:false,
+//       messsage:"Ce chat n'est pas valide pour supprimer ce message !"
+//     })
+//   }
+//  // Vérifiez que c'est votre propre message que vous vouliez supprimer sinon c'est impossible
+//  const messageToCheck = await Message.findOne({
+//   _id:messageId,
+//   chatId:chatId,
+//   sender:{
+//     _id:userId
+//   }
+//  })
+// 
+//  if(!messageToCheck){
+//   return res.status(401).json({
+//     success:false,
+//     message:"Vous ne pouvez supprimer que votre propre message dans ce Chat !"
+//   })
+//  }  
+//   // Alors on supprime le message 
+//  const messageToDelete = await Message.deleteOne({_id:messageId})
+//  if(!messageToDelete){
+//   return res.status(500).json({
+//     success:false,
+//     message:"ID du message est réquis !"
+//   })
+//  }
+//  console.log("On est la ============")
+//  // Réponse principale 
+//   return res.status(200).json({
+//   success:true,
+//   message:"Message supprimé",
+//   data:messageToDelete
+//  })
+//   
+//  } catch (error) {
+//  console.error("Message d'erreur : " ,error)
+//    return res.status(501).json({
+//     success:false,
+//     message:"Message Deleting Error : " + error.message
+//   })
+//  }
+// })
 
- try {
- if(!messageId || !chatId){
-    return res.status(401).json({
-      success:false,
-      messsage:"Ce chat n'est pas valide pour supprimer ce message !"
-    })
-  }
- // Vérifiez que c'est votre propre message que vous vouliez supprimer sinon c'est impossible
- const messageToCheck = await Message.findOne({
-  _id:messageId,
-  chatId:chatId,
-  sender:{
-    _id:userId
-  }
- })
- if(!messageToCheck){
-  return res.status(401).json({
-    success:false,
-    message:"Vous ne pouvez supprimer que votre propre message dans ce Chat !"
-  })
- }  
-  // Alors on supprime le message 
- const messageToDelete = await Message.deleteOne({_id:messageId})
- if(!messageToDelete){
-  return res.status(500).json({
-    success:false,
-    message:"ID du message est réquis !"
-  })
- }
- // Réponse principale 
-  return res.status(200).json({
-  success:true,
-  message:"Message supprimé",
-  data:messageToDelete
- })
-  
- } catch (error) {
-   return res.status(501).json({
-    success:false,
-    message:"Message Deleting Error : " + error.message
-  })
- }
-})
+// backend/controllers/chatController.js
+const mongoose = require('mongoose');
 
+const deleteYourMessage = asyncHandler(async (req, res) => {
+  const { messageId, chatId } = req.params;
+  const userId = req.user._id;
+
+  try {
+    if (!messageId || !chatId) {
+      console.log("Les IDs :", req.params);
+      return res.status(400).json({
+        success: false,
+        message: "Ce chat n'est pas valide pour supprimer ce message !"
+      });
+    }
+
+    //  Le messageId est-il un ObjectId valide ?
+    if (!mongoose.Types.ObjectId.isValid(messageId)) {
+      console.log(" ID de message invalide (probablement un ID temporaire):", messageId);
+      return res.status(400).json({
+        success: false,
+        message: "Vous ne pouvez pas tout de suite supprimer ce message ! Veuillez réessayer plus tard !"
+      });
+    }
+
+    //  Le chatId est-il un ObjectId valide ?
+    if (!mongoose.Types.ObjectId.isValid(chatId)) {
+      return res.status(400).json({
+        success: false,
+        message: "ID de chat invalide"
+      });
+    }
+
+    // Vérifiez que c'est votre propre message
+    const messageToCheck = await Message.findOne({
+      _id: messageId,
+      chatId: chatId,
+      sender:{
+        _id:userId
+      }
+    });
+
+    if (!messageToCheck) {
+      return res.status(401).json({
+        success: false,
+        message: "Vous ne pouvez supprimer que votre propre message dans ce Chat !"
+      });
+    }
+
+    // Supprimer le message
+    const messageToDelete = await Message.deleteOne({ _id: messageId });
+    
+    console.log(" Message supprimé avec succès");
+    
+    // Réponse principale 
+    return res.status(200).json({
+      success: true,
+      message: "Message supprimé",
+      data: messageToDelete
+    });
+
+  } catch (error) {
+    console.error("Message d'erreur : ", error);
+    return res.status(500).json({
+      success: false,
+      message: "Message Deleting Error : " + error.message
+    });
+  }
+});
 module.exports = { getUserChats, sendMessage, getChatMessages ,sendVoiceMessage,deleteOneChat,deleteYourMessage};
