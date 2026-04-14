@@ -635,7 +635,6 @@ const respondToSignal = async (req, res) => {
     }
 
     if (!["accepted", "ignored"].includes(response)) {
-      console.log("❌ Réponse invalide:", response);
       return res.status(400).json({
         success: false,
         message: "Réponse invalide.",
@@ -643,43 +642,28 @@ const respondToSignal = async (req, res) => {
     }
 
     // 2. TROUVER LE SIGNAL
-    console.log("🔍 Recherche signal:", signalId);
     const signal = await Signal.findById(signalId)
       .populate("fromUserId", "username profilePicture")
       .populate("toUserId", "username profilePicture");
 
     if (!signal) {
-      console.log("❌ Signal non trouvé");
       return res.status(404).json({
         success: false,
         message: "Signal non trouvé.",
       });
     }
 
-    console.log("✅ Signal trouvé:", {
-      id: signal._id,
-      from: signal.fromUserId?.username,
-      to: signal.toUserId?.username,
-      status: signal.status,
-    });
-
     // 3. VÉRIFIER LES AUTORISATIONS
-    console.log("🔐 Vérification autorisations...");
 
     // Vérification par userId (plus fiable)
     const isAuthorized = signal.toUserId._id.toString() === userId.toString();
 
     if (!isAuthorized) {
-      console.log("❌ Non autorisé - UserId mismatch");
-      console.log("   Signal.toUserId:", signal.toUserId._id.toString());
-      console.log("   User actuel:", userId.toString());
       return res.status(403).json({
         success: false,
         message: "Non autorisé à répondre à ce signal.",
       });
     }
-
-    console.log("✅ Autorisation OK");
 
     // 4. VÉRIFIER SI DÉJÀ TRAITÉ
     if (signal.status !== "pending") {
@@ -691,7 +675,6 @@ const respondToSignal = async (req, res) => {
     }
 
     // 5. METTRE À JOUR LE STATUT
-    console.log("🔄 Mise à jour statut:", response);
     signal.status = response;
     signal.respondedAt = new Date();
 
@@ -699,10 +682,8 @@ const respondToSignal = async (req, res) => {
 
     // 6. SI ACCEPTÉ, VÉRIFIER ET CRÉER UN CHAT
     if (response === "accepted") {
-      console.log("💬 [CHAT] Début création chat pour signal:", signalId);
 
       // VÉRIFIER SI UN CHAT EXISTE DÉJÀ ENTRE CES DEUX UTILISATEURS
-      console.log("🔍 [CHAT] Vérification chat existant...");
       const existingChat = await Chat.findOne({
         $or: [
           {
@@ -728,31 +709,15 @@ const respondToSignal = async (req, res) => {
         return res.status(400).json({
           success: false,
           message: `Il y a déjà un CHAT entre ${signal.toUserId.username} et ${signal.fromUserId.username} . Rendez-vous dans CHATS !`,
-          // data: {
-          //   chatId: existingChat._id,
-          //   chatExists: true,
-          //   signal: {
-          //     _id: signal._id,
-          //     status: "accepted",
-          //     fromUser: {
-          //       _id: signal.fromUserId._id,
-          //       username: signal.fromUserId.username,
-          //       profilePicture: signal.fromUserId.profilePicture,
-          //     },
-          //   },
-          // },
+         
         });
       }
 
-      console.log("✅ [CHAT] Aucun chat existant trouvé, création...");
 
       try {
         // Vérifier que les ObjectId sont valides
         const isValid1 = mongoose.Types.ObjectId.isValid(signal.fromUserId._id);
         const isValid2 = mongoose.Types.ObjectId.isValid(signal.toUserId._id);
-        console.log("   ✅ Participant1 ObjectId valide:", isValid1);
-        console.log("   ✅ Participant2 ObjectId valide:", isValid2);
-
         if (!isValid1 || !isValid2) {
           throw new Error("ObjectId invalide pour les participants");
         }
@@ -768,16 +733,13 @@ const respondToSignal = async (req, res) => {
           expiresAt: new Date(Date.now() +48 * 60 * 60 * 1000), // 48h
         };
 
-        console.log("📦 [CHAT] Données de création:", chatData);
 
         const chat = await Chat.create(chatData);
-        console.log("✅ [CHAT] Chat créé avec succès! ID:", chat._id);
 
         chatId = chat._id;
         signal.chatId = chatId;
 
-        // 🔥 VÉRIFICATION IMMÉDIATE
-        console.log("🔎 [CHAT] Vérification en base...");
+        // VÉRIFICATION IMMÉDIATE
         const savedChat = await Chat.findById(chat._id)
           .populate("participant1", "username")
           .populate("participant2", "username");
@@ -790,11 +752,8 @@ const respondToSignal = async (req, res) => {
             isActive: savedChat.isActive,
           });
         } else {
-          console.log("❌ [CHAT] Chat NON TROUVÉ en base après création!");
         }
       } catch (chatError) {
-        console.error("❌ [CHAT] ERREUR création chat:", chatError.message);
-        console.error("📝 [CHAT] Stack:", chatError.stack);
 
         // Gestion spécifique des erreurs
         if (chatError.code === 11000) {
@@ -821,8 +780,6 @@ const respondToSignal = async (req, res) => {
               message:"Vous avez déjà accepté son signal regar"
             })
             // chatId = existingChat._id;
-            // signal.chatId = chatId;
-            // console.log("✅ [CHAT] Utilisation du chat existant");
           }
         } else {
           // Relancer l'erreur pour les autres cas
@@ -841,16 +798,12 @@ const respondToSignal = async (req, res) => {
         const isFromUserOnline = socketService.isUserOnline(
           signal.fromUserId._id.toString()
         );
-        console.log(
-          `📨 [NOTIF] Expéditeur ${signal.fromUserId.username} en ligne: ${isFromUserOnline}`
-        );
+    
 
         if (isFromUserOnline) {
           const acceptedByUser = await User.findById(userId).select(
             "username profilePicture"
           );
-          console.log(`📨 [NOTIF] Accepté par: ${acceptedByUser.username}`);
-
           const notificationSent = socketService.notifySignalAccepted(
             io,
             signal.fromUserId._id,

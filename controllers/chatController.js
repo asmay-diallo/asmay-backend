@@ -123,8 +123,8 @@ const sendMessage = async (req, res) => {
         lastActivity: chat.lastActivity,
         lastMessage: content,
         senderId: senderId,
-        unreadCount: 1 //  IMPORTANT: Pour le destinataire
-      });
+        unreadCount: 1 
+            });
     }
 
     res.status(201).json({

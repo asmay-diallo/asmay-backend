@@ -14,7 +14,7 @@ const socketAuth = async (socket, next) => {
                   socket.handshake.query?.token;
 
     if (!token) {
-      console.log('❌ Socket auth: Token non fourni');
+      console.log(' Socket auth: Token non fourni');
       return next(new Error('Token non fourni'));
     }
 
@@ -25,7 +25,7 @@ const socketAuth = async (socket, next) => {
     const user = await User.findById(decoded.id).select('-password');
     
     if (!user) {
-      console.log('❌ Socket auth: Utilisateur non trouvé');
+      console.log(' Socket auth: Utilisateur non trouvé');
       return next(new Error('Utilisateur non trouvé'));
     }
 
@@ -33,7 +33,7 @@ const socketAuth = async (socket, next) => {
     socket.user = user;
     socket.userId = user._id.toString();
     
-    console.log(`✅ Socket auth réussie pour ${user.username}`);
+    console.log(` Socket auth réussie pour ${user.username}`);
     next();
     
   } catch (error) {

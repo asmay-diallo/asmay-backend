@@ -22,6 +22,7 @@ const {
   updateLocation,
   getAllUser,
   getNearbyUsers,
+  likeOnlineUser,
   getCurrentUser,
   addReward,
   getExchangeRate,
@@ -37,9 +38,8 @@ const { protect } = require("../middleware/auth");
 router.use(protect);
 
 // Routes existantes
-
-// UNE SEULE FOIS chaque route
 router.get("/nearby-users",protect, getNearbyUsers);
+router.patch("/onlineLike/:likedUserId",protect,likeOnlineUser);
 router.put("/location", protect,updateLocation);
 router.route("/profile").get(protect,getUserProfile).put(protect,updateUserProfile);
 router.get("/",protect,getAllUser);
@@ -56,10 +56,10 @@ router.post('/me/rewards', protect, addReward);
 // Route pour obtenir le profil utilisateur (avec coins)
 router.get('/me', protect, getCurrentUser);
 router.get('/exchange',protect,getExchangeRate)
-// 🔐 Route protégée : seul un user connecté peut avoir un token
+//  Route protégée : seul un user connecté peut avoir un token
 router.get('/stream-token', protect, generateStreamToken);
 
-// 🌐 Route pour les webhooks Stream (peut nécessiter une validation différente)
+// Route pour les webhooks Stream (peut nécessiter une validation différente)
 router.post('/webhook', handleStreamWebhook);
 router.post('/initiate-call', protect, initiateVideoCall);
 

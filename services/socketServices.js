@@ -18,7 +18,11 @@ class SocketService {
   handleConnection(socket, io) {
     const userId = socket.userId;
     const user = socket.user;
-    
+      console.log("🔌 Service: Nouvelle connexion");
+  console.log("  socket.userId:", userId);
+  console.log("  socket.user:", user?.username);
+  console.log("  socket.id:", socket.id);
+  
     console.log(`🔌 Service: Nouvelle connexion pour ${user.username}`);
 
     // Stocker les mappings
@@ -131,14 +135,86 @@ class SocketService {
         });
 
       } catch (error) {
-        console.error("❌ Erreur traitement message:", error);
+        console.error(" Erreur traitement message:", error);
         socket.emit("message_error", {
           tempId: data.tempId,
           error: error.message,
         });
       }
     });
+    // like un utilisateur 
+    socket.on("like_online_user", async (likedUserId) => {
+   const likerUserId = socket.userId;
+   const likerUsername = socket.user?.username;
+  
+  
+  try {
+    // Vérifier que l'utilisateur existe
+    const userToLike = await User.findById(likedUserId);
+    if (!userToLike) {
+      socket.emit("like_error", {
+        success: false,
+        message: "Cet utilisateur n'existe pas !"
+      });
+      return;
+    }
 
+    // Vérifier qu'on ne se like pas soi-même
+    if (likerUserId === likedUserId) {
+      socket.emit("like_error", {
+        success: false,
+        message: "Vous ne pouvez pas vous liker vous-même"
+      });
+      return;
+    }
+
+    // Mettre à jour l'utilisateur liké
+    const updatedUser = await User.findByIdAndUpdate(
+      likedUserId,
+      { $addToSet: { likers: likerUserId } },
+      { new: true }
+    ).select('username profilePicture likers');
+
+    // Confirmer à l'expéditeur
+    socket.emit("like_sent", {
+      success: true,
+      userId: likedUserId,
+      likersCount: updatedUser.likers.length
+    });
+
+    //  NOTIFICATION À L'UTILISATEUR LIKÉ
+    const targetSocketId = this.userConnections.get(likedUserId);
+    
+    if (targetSocketId && io) {
+      // Émettre directement au socket de l'utilisateur liké
+      io.to(targetSocketId).emit("user_online_liked", {
+        likedByUser: {
+          _id: socket.user._id,
+          username: socket.user.username,
+          profilePicture: socket.user.profilePicture
+        },
+        likedAt: new Date()
+      });
+      console.log(`✅ Notification envoyée à ${userToLike.username} (socket: ${targetSocketId})`);
+    } else {
+      // Fallback: émettre vers la room
+      io.to(`user_${likedUserId}`).emit("user_online_liked", {
+        likedByUser: {
+          _id: socket.user._id,
+          username: socket.user.username,
+          profilePicture: socket.user.profilePicture
+        },
+        likedAt: new Date()
+      });
+    }
+
+  } catch (error) {
+    socket.emit("like_error", {
+      success: false,
+      message: "Impossible de liker cet utilisateur"
+    });
+  }
+});
     // Ping
     socket.on("ping", () => {
       socket.emit("pong", { timestamp: Date.now() });
@@ -228,7 +304,7 @@ class SocketService {
     }
   }
 
-  // 📨 Envoyer notification de signal (CORRIGÉ)
+  //  Envoyer notification de signal 
   sendSignalNotification(io, targetUserId, signalData) {
     console.log(`📨 Envoi notification à ${targetUserId}`, signalData);
 
@@ -256,7 +332,7 @@ class SocketService {
     }
   }
 
-  // ✅ Notifier acceptation (inchangé)
+  //  Notifier acceptation 
   notifySignalAccepted(io, fromUserId, acceptedByUser, chatId) {
     const fromUserSocketId = this.userConnections.get(fromUserId.toString());
 
@@ -271,9 +347,6 @@ class SocketService {
         acceptedAt: new Date(),
       });
 
-      console.log(
-        `✅ ${acceptedByUser.username} a accepté le signal de ${fromUserId}`
-      );
       return true;
     }
 
@@ -293,17 +366,59 @@ class SocketService {
         acceptedAt: new Date(),
       });
 
-      console.log(
-        `✅ ${declinedByUser.username} a refusé le signal de ${fromUserId}`
-      );
       return true;
     }
 
     return false;
   }
-  /**
-   * Vérifie si un utilisateur est en ligne
-   */
+  // notifyLikedUserOnline(io,likedUser,likerUser){
+  //   const likedUserSocketId = this.userConnections.get(likedUser.toString())
+  //   if(likedUserSocketId && io){
+  //     io.to(`user_${likedUser}`).emit("user_online_liked",{
+  //          likedByUser:{
+  //            _id:likerUser._id,
+  //            username:likerUser.username,
+  //            profilePicture:likerUser.profilePicture
+  //          },
+  //          likedAt:new Date()
+  //     })
+  //     return true
+  //   }
+  //   return false
+  // }
+  notifyLikedUserOnline(io, likedUser, likerUser) {
+  const likedUserId = likedUser._id.toString();
+  const likerUserId = likerUser._id.toString();
+  
+  console.log(`📨 Notification de like: ${likerUser.username} → ${likedUser.username}`);
+  
+  // Émettre vers la room personnelle
+  io.to(`user_${likedUserId}`).emit("user_online_liked", {
+    likedByUser: {
+      _id: likerUser._id,
+      username: likerUser.username,
+      profilePicture: likerUser.profilePicture
+    },
+    likedAt: new Date()
+  });
+  
+  //  Émettre vers le socket direct (si disponible)
+  const targetSocketId = this.userConnections.get(likedUserId);
+  if (targetSocketId) {
+    io.to(targetSocketId).emit("user_online_liked", {
+      likedByUser: {
+        _id: likerUser._id,
+        username: likerUser.username,
+        profilePicture: likerUser.profilePicture
+      },
+      likedAt: new Date()
+    });
+  }
+  
+  console.log(`✅ Notification envoyée à ${likedUser.username}`);
+  return true;
+}
+   // Vérifie si un utilisateur est en ligne
   isUserOnline(userId) {
     return this.userConnections.has(userId.toString());
   }

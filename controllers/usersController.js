@@ -407,6 +407,110 @@ const getCurrentUser = asyncHandler(async (req, res) => {
   }
 })
 
+// Like an online User
+// @route PATCH /api/users/onlineLike/:likedUserId
+// @access Private 
+// const likeOnlineUser = asyncHandler(async(req,res)=>{
+//   const likerUserId = req.user._id 
+//   const likedUserId = req.params.id
+//  try {
+//    
+//   const userLiked = await User.findByIdAndUpdate(
+//     {_id:likedUserId},
+//     {
+//       $addToSet:{
+//         likers:likerUserId
+//       }
+//     }
+//   )
+//  // Notifier en temps réel 
+//   const io = req.app.get('io')
+//   if(io){
+//      const socketService = require("../services/socketServices");
+//         // Vérifier si l'utilisateur liké en ligne 
+//         const isFromUserOnline = socketService.isUserOnline(
+//           likerUserId.toString()
+//         );
+//    if(isFromUserOnline){
+//     const likerUser = await User.findById(likerUserId)
+//     const likeNotificationSent = socketService.notifyLikedUserOnline(io,userLiked,likerUser,)
+//     
+//    }
+// 
+// 
+//   }
+//   return res.status(200).json({
+//   success:true,
+//   message:"User est bien liké",
+//   data:userLiked
+//   })
+//  } catch (error) {
+//   console.log("Error to like this user:",error);
+//   
+//  }
+// })
+// backend/controllers/usersController.js
+const likeOnlineUser = asyncHandler(async (req, res) => {
+  const likerUserId = req.user._id;
+  const likedUserId = req.params.likedUserId; 
+  
+  try {
+    // Vérifier que l'utilisateur existe
+    const userLiked = await User.findById(likedUserId);
+    if (!userLiked) {
+      return res.status(404).json({
+        success: false,
+        message: "Utilisateur non trouvé"
+      });
+    }
+
+    // Vérifier qu'on ne se like pas soi-même
+    if (likerUserId.toString() === likedUserId) {
+      return res.status(400).json({
+        success: false,
+        message: "Vous ne pouvez pas vous liker vous-même"
+      });
+    }
+
+    // Mettre à jour l'utilisateur liké
+    const updatedUser = await User.findByIdAndUpdate(
+      likedUserId,
+      {
+        $addToSet: { likers: likerUserId }
+      },
+      { new: true }
+    );
+
+    // Notifier en temps réel via socket
+    const io = req.app.get('io');
+    if (io) {
+      const socketService = require("../services/socketServices");
+      
+      const isUserOnline = socketService.isUserOnline(likedUserId.toString());
+      
+      if (isUserOnline) {
+        const likerUser = await User.findById(likerUserId).select('username profilePicture');
+        socketService.notifyLikedUserOnline(io, updatedUser, likerUser);
+        console.log("🚀Notification est envoyé maintenant ");
+        
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User liké avec succès",
+      data: updatedUser
+    });
+    
+  } catch (error) {
+    console.error("Error to like this user:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erreur lors du like",
+      error: error.message
+    });
+  }
+});
 // @desc    Update user profile
 // @route   PUT /api/users/profile
 // @access  Private
@@ -2113,6 +2217,7 @@ module.exports = {
   getUserStats,
   updateLocation,
   getAllUser,
+  likeOnlineUser,
   getNearbyUsers,
   getCurrentUser,
   addReward,
