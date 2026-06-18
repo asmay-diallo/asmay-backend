@@ -26,12 +26,9 @@ const {
   getCurrentUser,
   addReward,
   getExchangeRate,
-   generateStreamToken,
-    handleStreamWebhook,
-    initiateVideoCall
+ 
 } = require("../controllers/usersController");
 
-console.log(" Route users chargée - getNearbyUsers importé:", typeof getNearbyUsers);
 const { protect } = require("../middleware/auth");
 
 //  TOUTES LES ROUTES SONT PROTÉGÉES
@@ -56,11 +53,5 @@ router.post('/me/rewards', protect, addReward);
 // Route pour obtenir le profil utilisateur (avec coins)
 router.get('/me', protect, getCurrentUser);
 router.get('/exchange',protect,getExchangeRate)
-//  Route protégée : seul un user connecté peut avoir un token
-router.get('/stream-token', protect, generateStreamToken);
-
-// Route pour les webhooks Stream (peut nécessiter une validation différente)
-router.post('/webhook', handleStreamWebhook);
-router.post('/initiate-call', protect, initiateVideoCall);
 
 module.exports = router;
