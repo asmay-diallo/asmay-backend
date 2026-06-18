@@ -410,46 +410,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 // Like an online User
 // @route PATCH /api/users/onlineLike/:likedUserId
 // @access Private 
-// const likeOnlineUser = asyncHandler(async(req,res)=>{
-//   const likerUserId = req.user._id 
-//   const likedUserId = req.params.id
-//  try {
-//    
-//   const userLiked = await User.findByIdAndUpdate(
-//     {_id:likedUserId},
-//     {
-//       $addToSet:{
-//         likers:likerUserId
-//       }
-//     }
-//   )
-//  // Notifier en temps réel 
-//   const io = req.app.get('io')
-//   if(io){
-//      const socketService = require("../services/socketServices");
-//         // Vérifier si l'utilisateur liké en ligne 
-//         const isFromUserOnline = socketService.isUserOnline(
-//           likerUserId.toString()
-//         );
-//    if(isFromUserOnline){
-//     const likerUser = await User.findById(likerUserId)
-//     const likeNotificationSent = socketService.notifyLikedUserOnline(io,userLiked,likerUser,)
-//     
-//    }
-// 
-// 
-//   }
-//   return res.status(200).json({
-//   success:true,
-//   message:"User est bien liké",
-//   data:userLiked
-//   })
-//  } catch (error) {
-//   console.log("Error to like this user:",error);
-//   
-//  }
-// })
-// backend/controllers/usersController.js
+
 const likeOnlineUser = asyncHandler(async (req, res) => {
   const likerUserId = req.user._id;
   const likedUserId = req.params.likedUserId; 
@@ -543,8 +504,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     message: "Profil mis à jour avec succès",
     data: user,
   });
-}); // NE PAS OUBLIER DE FERMER LA FONCTION ICI
-
+}); 
 // @desc    Get user by ID
 // @route   GET /api/users/:id
 // @access  Private
@@ -1061,6 +1021,7 @@ const calculateProfileCompletion = (user) => {
 //     }
 //   });
 // });
+
 const updateLocation = asyncHandler(async (req, res) => {
   try {
     const { latitude, longitude } = req.body;
@@ -2204,7 +2165,6 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   
   return Math.round(distance); // 🔥 Arrondi au mètre près
 }
-console.log("✅ usersController chargé - getNearbyUsers:", typeof getNearbyUsers);
 
 module.exports = {
   getUserProfile,

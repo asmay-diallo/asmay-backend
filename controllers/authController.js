@@ -282,20 +282,20 @@ const register = async (req, res) => {
     if (!username || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Username, email et password sont requis",
+        message: "Username, email et password sont requis, tous les champs sont obligatoires",
       });
     }
 
     // Vérifier si l'utilisateur existe déjà
-    const existingUserWithUsername = await User.findOne({
-      $or:[ { username }]
-    })
-    if(existingUserWithUsername){
-      return res.status(400).json({
-        success:false,
-        message:"Cet nom d'utilisateur ASMAY existe déjà ! Veuillez ajouter un autre nom d'utilisateur !"
-      })
-    }
+    // const existingUserWithUsername = await User.findOne({
+    //   $or:[ { username }]
+    // })
+    // if(existingUserWithUsername){
+    //   return res.status(400).json({
+    //     success:false,
+    //     message:"Cet nom d'utilisateur ASMAY existe déjà ! Veuillez ajouter un autre nom d'utilisateur !"
+    //   })
+    // }
     const existingUserWithEmail = await User.findOne({
       $or: [{ email }],
     });
@@ -329,20 +329,19 @@ const register = async (req, res) => {
           isActive: true,
           lastUpdated: new Date(),
         });
-        console.log(`✅ Session créée pour ${username}`);
       } catch (sessionError) {
         console.error("❌ Erreur création session:", sessionError);
       }
     }
 
-    // ✅ NOUVEAU : Envoyer email de bienvenue
+    // Envoyer email de bienvenue
     try {
       await emailService.sendWelcomeEmail(email, username);
     } catch (emailError) {
       console.error("❌ Erreur envoi email bienvenue:", emailError);
     }
 
-    // ✅ NOUVEAU : Supprimer la demande de vérification
+    // Supprimer la demande de vérification
     await EmailVerification.deleteOne({ email });
 
     // Générer le token JWT
@@ -402,13 +401,6 @@ login = async (req, res) => {
   try {
     const { email, password, latitude, longitude } = req.body;
 
-    console.log("🔐 Login attempt:", {
-      email,
-      password: password ? "***" : "NULL",
-      latitude,
-      longitude,
-    });
-
     // Vérifier si l'utilisateur existe - AVEC le password
     const user = await User.findOne({ email }).select("+password");
 
@@ -416,7 +408,7 @@ login = async (req, res) => {
       console.log("❌ User not found:", email);
       return res.status(401).json({
         success: false,
-        message: "Email ou mot de passe incorrect",
+        message: "Votre Email est incorrecte, vérifiez et réessayez",
       });
     }
 
@@ -424,14 +416,11 @@ login = async (req, res) => {
     const isPasswordValid = await user.correctPassword(password, user.password);
 
     if (!isPasswordValid) {
-      console.log("❌ Invalid password for user:", user.username);
       return res.status(401).json({
         success: false,
-        message: "Email ou mot de passe incorrect",
+        message: "Votre mot de passe est incorrect, vérifiez et réessayez",
       });
     }
-
-    console.log("✅ Login successful for:", user.username);
 
     // Mettre à jour/créer la session
     try {
@@ -456,7 +445,6 @@ login = async (req, res) => {
 
         console.log(`✅ Session créée/mise à jour pour ${user.username}`);
       } else {
-        console.log("⚠️ Pas de localisation fournie pour la session");
       }
     } catch (sessionError) {
       console.error("❌ Erreur session (non bloquante):", sessionError);
@@ -504,7 +492,7 @@ login = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Erreur serveur lors de la connexion",
+      message: "Vérifiez votre connexion internet et réessayez",
     });
   }
 };
@@ -533,7 +521,7 @@ const logout = async (req, res) => {
     console.error("Logout error:", error);
     res.status(500).json({
       success: false,
-      message: "Erreur lors de la déconnexion",
+      message: "Vérifiez votre connexion internet et réessayez",
     });
   }
 };

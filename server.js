@@ -360,7 +360,7 @@ io.on('connection', (socket) => {
   SocketService.handleConnection(socket, io);
   
   socket.on('disconnect', (reason) => {
-    console.log(`🔌 Socket déconnecté: ${socket.id} - ${reason}`);
+    console.log(` Socket déconnecté: ${socket.id} - ${reason}`);
     socket.broadcast.emit('user_offline', { userId: socket.userId });
     SocketService.handleDisconnection(socket, reason);
   });
@@ -407,8 +407,9 @@ app.use((err, req, res, next) => {
 // Connexion MongoDB
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+  const connect =  await mongoose.connect(process.env.MONGODB_URI);
     console.log("✅ MongoDB connecté");
+    
   } catch (error) {
     console.error("❌ MongoDB erreur:", error);
     process.exit(1);

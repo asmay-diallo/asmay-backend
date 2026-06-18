@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema(
     username: {
       type: String,
       required: [true, "Le nom d'utilisateur est requis"],
-      unique: true,
+      // unique: true,
       trim: true,
       minlength: [
         3,
@@ -45,6 +45,10 @@ const userSchema = new mongoose.Schema(
       maxlength: [500, "La bio ne peut pas dépasser 500 caractères"],
       default: "",
     },
+     contents: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Content"
+    }],
      followers: {
       type: [String],
       ref:'User'
