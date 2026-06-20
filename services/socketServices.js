@@ -15,6 +15,7 @@ class SocketService {
      this.chatPresence = new Map(); 
     this.typingUsers = new Map();  
     this.typingTimeouts = new Map();
+     this.recordingUsers = new Map();
   }
     setIO(io) {
     this.io = io;
@@ -182,6 +183,30 @@ class SocketService {
       //  TYPING STOP
     socket.on("typing_stop", ({ chatId }) => {
       this.stopUserTyping(chatId, userId, io);
+    });
+
+       // ==========  RECORDING Start==========
+    socket.on("audio_recording_start", (data) => {
+      const { chatId, username } = data;
+      this.recordingUsers.set(`${chatId}_${userId}`, { userId, username, chatId, startTime: new Date() });
+      socket.to(`chat_${chatId}`).emit("audio_recording_start", { userId, username: username || socket.user?.username, chatId, timestamp: new Date() });
+    });
+ //  RECORDING Progress
+    socket.on("audio_recording_progress", (data) => {
+      const { chatId, duration } = data;
+      socket.to(`chat_${chatId}`).emit("audio_recording_progress", { userId, chatId, duration, timestamp: new Date() });
+    });
+  //  RECORDING Stop
+    socket.on("audio_recording_stop", (data) => {
+      const { chatId, username } = data;
+      this.recordingUsers.delete(`${chatId}_${userId}`);
+      socket.to(`chat_${chatId}`).emit("audio_recording_stop", { userId, username: username || socket.user?.username, chatId, timestamp: new Date() });
+    });
+  //  RECORDING cancel
+    socket.on("audio_recording_cancel", (data) => {
+      const { chatId, username } = data;
+      this.recordingUsers.delete(`${chatId}_${userId}`);
+      socket.to(`chat_${chatId}`).emit("audio_recording_cancel", { userId, username: username || socket.user?.username, chatId, timestamp: new Date() });
     });
 
     // Envoyer un message
