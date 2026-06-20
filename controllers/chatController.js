@@ -241,7 +241,7 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
       chatId: req.params.chatId,
       sender: req.user.id,
       content: '',
-      audioUrl: audioUrl,
+      audioUrl: audioFullUrl,
       duration: parseInt(req.body.duration) || 0,
       type: 'audio',
       tempId: req.body.tempId || null,
