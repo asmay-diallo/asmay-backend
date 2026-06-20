@@ -277,7 +277,7 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
         username: message.sender.username,
         profilePicture: message.sender.profilePicture
       },
-      audioUrl: audioUrl,
+      audioUrl: audioFullUrl,
       audioFullUrl: audioFullUrl,
       duration: message.duration,
       chatId: req.params.chatId,
