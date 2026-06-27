@@ -16,8 +16,8 @@ const getUserChats = async (req, res) => {
       isActive: true,
       $or: [{ participant1: userId }, { participant2: userId }],
     })
-      .populate("participant1", "username profilePicture interests")
-      .populate("participant2", "username profilePicture interests")
+      .populate("participant1", "username profilePicture interests lastActive")
+      .populate("participant2", "username profilePicture interests lastActive")
       .sort({ lastActivity: -1 });
 
     //  Formater la réponse pour correspondre au frontend
