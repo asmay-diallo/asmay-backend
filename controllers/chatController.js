@@ -232,8 +232,12 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
     console.log(' Chat trouvé et utilisateur autorisé');
 
     // 3. URLs du fichier
-    const audioUrl = `/uploads/voice_messages/${req.file.filename}`;
-    const audioFullUrl = `${req.protocol}://${req.get("host")}${audioUrl}`;
+    const baseUrl = process.env.NODE_ENV === 'production' 
+  ? `https://${req.get("host")}` 
+  : `${req.protocol}://${req.get("host")}`;
+
+    const audioUrl = `${baseUrl}/uploads/voice_messages/${req.file.filename}`;
+    // const audioFullUrl = `${req.protocol}://${req.get("host")}${audioUrl}`;
 
     // 4. Créer le message AVEC LE BON CHAMP
     console.log('\n💾 Création du message...');
@@ -241,7 +245,7 @@ const sendVoiceMessage = asyncHandler(async (req, res) => {
       chatId: req.params.chatId,
       sender: req.user.id,
       content: '',
-      audioUrl: audioFullUrl,
+      audioUrl: audioUrl,
       duration: parseInt(req.body.duration) || 0,
       type: 'audio',
       tempId: req.body.tempId || null,
